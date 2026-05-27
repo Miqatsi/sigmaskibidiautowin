@@ -1,0 +1,395 @@
+// Sima Arome — Enterprise Manufacturing Database Schema
+// Prisma Schema for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// AUTH & ACCESS CONTROL
+// ============================================================
+
+model Role {
+  id   String @id @default(uuid())
+  name String @unique
+
+  permissions RolePermission[]
+  users       User[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("roles")
+}
+
+model Permission {
+  id       String @id @default(uuid())
+  action   String // e.g. "create", "read", "update", "delete"
+  resource String // e.g. "qc_logs", "production_batches"
+
+  roles RolePermission[]
+
+  @@unique([action, resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id       String @id @default(uuid())
+  username String @unique
+  email    String @unique
+  password String
+  fullName String
+  isActive Boolean @default(true)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  auditLogs AuditLog[]
+
+  @@index([roleId])
+  @@index([isActive])
+  @@map("users")
+}
+
+// ============================================================
+// SUPPLIERS & RAW MATERIALS
+// ============================================================
+
+model Supplier {
+  id          String  @id @default(uuid())
+  name        String
+  code        String  @unique
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+
+  rawMaterialLots RawMaterialLot[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@map("suppliers")
+}
+
+model RawMaterial {
+  id   String @id @default(uuid())
+  name String
+  code String @unique
+  unit String // e.g. "kg", "liter"
+
+  lots RawMaterialLot[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@map("raw_materials")
+}
+
+model RawMaterialLot {
+  id          String    @id @default(uuid())
+  lotNumber   String    @unique
+  materialId  String
+  supplierId  String
+  quantity    Float
+  unit        String
+  receivedAt  DateTime  @default(now())
+  expiryDate  DateTime?
+  status      String    @default("PENDING_QC") // PENDING_QC, APPROVED, REJECTED
+
+  material RawMaterial @relation(fields: [materialId], references: [id])
+  supplier Supplier    @relation(fields: [supplierId], references: [id])
+
+  qcLogs              QCLog[]
+  productionBatchLots ProductionBatchRawMaterial[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([lotNumber])
+  @@index([materialId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([expiryDate])
+  @@map("raw_material_lots")
+}
+
+// ============================================================
+// PRODUCTS & PRODUCTION
+// ============================================================
+
+model Product {
+  id   String @id @default(uuid())
+  name String
+  code String @unique
+  unit String // e.g. "bottle", "kg"
+
+  productionOrders ProductionOrder[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@map("products")
+}
+
+model ProductionOrder {
+  id          String   @id @default(uuid())
+  orderNumber String   @unique
+  productId   String
+  quantity    Float
+  unit        String
+  status      String   @default("PLANNED") // PLANNED, IN_PROGRESS, COMPLETED, CANCELLED
+  plannedDate DateTime
+
+  product Product           @relation(fields: [productId], references: [id])
+  batches ProductionBatch[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([orderNumber])
+  @@index([productId])
+  @@index([status])
+  @@index([plannedDate])
+  @@map("production_orders")
+}
+
+model ProductionBatch {
+  id              String    @id @default(uuid())
+  lotNumber       String    @unique
+  orderId         String
+  quantity        Float
+  unit            String
+  status          String    @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  order       ProductionOrder             @relation(fields: [orderId], references: [id])
+  rawMaterials ProductionBatchRawMaterial[]
+  qcLogs      QCLog[]
+  inventoryTransactions InventoryTransaction[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([lotNumber])
+  @@index([orderId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("production_batches")
+}
+
+// Junction table: which raw material lots went into which production batch
+model ProductionBatchRawMaterial {
+  id              String @id @default(uuid())
+  batchId         String
+  rawMaterialLotId String
+  quantityUsed    Float
+  unit            String
+
+  batch          ProductionBatch @relation(fields: [batchId], references: [id])
+  rawMaterialLot RawMaterialLot  @relation(fields: [rawMaterialLotId], references: [id])
+
+  @@unique([batchId, rawMaterialLotId])
+  @@map("production_batch_raw_materials")
+}
+
+// ============================================================
+// WAREHOUSE & INVENTORY
+// ============================================================
+
+model Warehouse {
+  id       String @id @default(uuid())
+  name     String
+  code     String @unique
+  location String?
+
+  storageLocations StorageLocation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@map("warehouses")
+}
+
+model StorageLocation {
+  id          String @id @default(uuid())
+  warehouseId String
+  name        String
+  code        String @unique
+
+  warehouse    Warehouse              @relation(fields: [warehouseId], references: [id])
+  transactions InventoryTransaction[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([warehouseId])
+  @@map("storage_locations")
+}
+
+model InventoryTransaction {
+  id                String  @id @default(uuid())
+  type              String  // IN, OUT, TRANSFER, ADJUSTMENT
+  storageLocationId String
+  batchId           String?
+  quantity          Float
+  unit              String
+  reference         String? // e.g. dispatch number, adjustment reason
+
+  storageLocation StorageLocation  @relation(fields: [storageLocationId], references: [id])
+  batch           ProductionBatch? @relation(fields: [batchId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([storageLocationId])
+  @@index([batchId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("inventory_transactions")
+}
+
+// ============================================================
+// QUALITY CONTROL
+// ============================================================
+
+model QCLog {
+  id              String  @id @default(uuid())
+  type            String  // INCOMING, IN_PROCESS, FINAL
+  result          String  // PASS, FAIL, CONDITIONAL
+  notes           String?
+  rawMaterialLotId String?
+  batchId         String?
+
+  rawMaterialLot RawMaterialLot?  @relation(fields: [rawMaterialLotId], references: [id])
+  batch          ProductionBatch? @relation(fields: [batchId], references: [id])
+
+  sampleDispatches SampleDispatch[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([rawMaterialLotId])
+  @@index([batchId])
+  @@index([result])
+  @@index([type])
+  @@index([createdAt])
+  @@map("qc_logs")
+}
+
+// ============================================================
+// SAMPLE DISPATCH (Lab samples sent out)
+// ============================================================
+
+model SampleDispatch {
+  id          String    @id @default(uuid())
+  qcLogId     String
+  labName     String
+  sentAt      DateTime  @default(now())
+  returnedAt  DateTime?
+  result      String?   // PASS, FAIL, PENDING
+  notes       String?
+
+  qcLog QCLog @relation(fields: [qcLogId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  version   Int       @default(1)
+
+  @@index([qcLogId])
+  @@map("sample_dispatches")
+}
+
+// ============================================================
+// AUDIT LOG (System-wide change tracking)
+// ============================================================
+
+model AuditLog {
+  id        String @id @default(uuid())
+  userId    String
+  action    String // CREATE, UPDATE, DELETE
+  tableName String
+  recordId  String
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tableName, recordId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
