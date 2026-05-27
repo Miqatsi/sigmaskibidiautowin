@@ -1,0 +1,2 @@
+# sigmaskibidiautowin
+AUTO WIN
