@@ -305,3 +305,242 @@ Priority order:
 ---
 
 *Last updated: 2026-05-27 (Phase 11 complete — full traceability chain verified)*
+
+---
+
+## Session: 2026-05-27 — Frontend Setup + Demo Login
+
+### AI Self-Review Protocol
+
+```
+Date: 2026-05-27
+Task: Setup Next.js frontend + demo login (sigma/skibidi)
+Files Changed:
+  - frontend/ (entire new directory — Next.js 16 + Tailwind 4 + TypeScript)
+  - frontend/src/app/ (layout, page, login, dashboard + 7 module pages)
+  - frontend/src/components/ (Sidebar, Header, Button, Input, Card, Badge)
+  - frontend/src/lib/ (api.ts, auth.ts)
+  - frontend/src/types/ (index.ts — all model interfaces)
+  - frontend/.env.local (NEXT_PUBLIC_API_URL)
+  - frontend/next.config.ts (port 3001)
+  - backend/prisma/seed.ts (added sigma user with password skibidi)
+Completed:
+  - Next.js App Router project initialized (port 3001)
+  - Tailwind CSS configured with high-contrast factory-friendly styles
+  - Login page with demo/offline fallback (sigma/skibidi works without backend)
+  - Dashboard layout with sidebar navigation (8 nav items)
+  - Dashboard overview page with summary cards + quick actions
+  - Lot tracking page (table with status badges)
+  - QC inspection page (table with type/result)
+  - Production orders page (table with status)
+  - Inventory transactions page (table with type badges)
+  - Suppliers page (table)
+  - Materials page (table)
+  - Traceability page (search + forward/backward trace display)
+  - Reusable UI components (Button, Input, Card, Badge with status mapping)
+  - Centralized API client with auth headers, error handling, network error resilience
+  - Auth utilities (setAuth, getUser, logout, isAuthenticated)
+  - TypeScript interfaces for all backend models
+  - Build verified: 0 errors, all routes compile
+Remaining:
+  - Role-based views (show/hide nav items based on role)
+  - Create/edit forms (lots, QC, production, suppliers, materials)
+  - Real-time data refresh / polling
+  - Loading states on navigation
+  - AI features (endpoint, QC parsing, PPIC)
+  - Accessibility improvements
+  - Mobile responsive testing
+Risks:
+  - Demo mode uses fake token — dashboard pages show error when backend is down
+  - No form validation on frontend yet (relies on backend Zod)
+Technical Debt:
+  - Demo login credentials hardcoded in frontend (acceptable for hackathon)
+  - No refresh token flow
+  - No client-side caching/SWR
+Bugs:
+  - None known (build passes clean)
+Security Concerns:
+  - Demo token is a plain string, not a real JWT — only for offline demo
+  - localStorage for token storage (standard SPA pattern, acceptable)
+Next Priority:
+  - Start backend (PostgreSQL + seed) so frontend loads real data
+  - Add create/edit forms for lots and QC (most demo-impactful)
+  - AI features integration
+```
+
+### Frontend Architecture
+
+```
+frontend/ (Next.js 16 + Tailwind 4)
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx              # Root layout (metadata)
+│   │   ├── page.tsx                # Redirect → /login or /dashboard
+│   │   ├── globals.css             # Tailwind + factory styles
+│   │   ├── login/page.tsx          # Login with demo fallback
+│   │   └── dashboard/
+│   │       ├── layout.tsx          # Auth guard + sidebar + header
+│   │       ├── page.tsx            # Overview (stats + quick actions)
+│   │       ├── lots/page.tsx       # Lot tracking table
+│   │       ├── qc/page.tsx         # QC inspection logs
+│   │       ├── production/page.tsx # Production orders
+│   │       ├── inventory/page.tsx  # Inventory transactions
+│   │       ├── suppliers/page.tsx  # Supplier management
+│   │       ├── materials/page.tsx  # Raw materials catalog
+│   │       └── traceability/page.tsx # Lot tracing (search)
+│   ├── components/
+│   │   ├── layout/ (Sidebar, Header)
+│   │   └── ui/ (Button, Input, Card, Badge)
+│   ├── lib/ (api.ts, auth.ts)
+│   └── types/ (index.ts)
+├── .env.local                      # NEXT_PUBLIC_API_URL=http://localhost:3000
+├── next.config.ts                  # Dev port 3001
+└── package.json
+```
+
+### Key Decisions
+
+1. **Demo/offline login** — Frontend works without backend using hardcoded sigma/skibidi credentials. Tries backend first, falls back to local auth.
+2. **Port 3001** — Frontend on 3001, backend on 3000 (matches CORS_ORIGIN in backend).
+3. **High-contrast UI** — Large fonts (text-base minimum), big buttons (min-h-12), clear status badges per AI_RULES.
+4. **Centralized API client** — Single `api.ts` handles auth headers, 401 redirect, network errors.
+5. **Status badge mapping** — Consistent color coding: green=approved/pass, yellow=pending, red=rejected/fail.
+
+### Seeded Users (Updated)
+
+| Username | Password | Role | Notes |
+|----------|----------|------|-------|
+| sigma | skibidi | Admin | Demo account (primary) |
+| admin | password123 | Admin | Original admin |
+| qc001 | password123 | QC | QC inspector |
+| wh001 | password123 | Warehouse | Warehouse staff |
+| prod001 | password123 | Production | Production operator |
+
+---
+
+*Last updated: 2026-05-27 (Frontend setup complete — demo login working)*
+
+---
+
+## Session: 2026-05-27 — Backend + Frontend Full Integration
+
+### AI Self-Review Protocol
+
+```
+Date: 2026-05-27
+Task: Get backend running and connected to frontend (lots, QC, production, inventory, suppliers, materials, traceability)
+Files Changed:
+  - backend/prisma/seed.ts (sigma user already added from previous session)
+  - frontend/src/app/login/page.tsx (fixed: send 'username' field instead of 'login')
+  - frontend/src/app/dashboard/traceability/page.tsx (rewritten to match actual API response)
+  - frontend/src/lib/api.ts (network error handling, demo mode detection)
+  - frontend/src/lib/auth.ts (handle role as string from backend)
+  - frontend/src/types/index.ts (AuthResponse role type flexibility)
+Completed:
+  - PostgreSQL initialized (initdb on Arch Linux)
+  - Database 'sima_arome' created with password auth
+  - Prisma migrations deployed (2 migrations)
+  - Seed data loaded (roles, users, suppliers, materials, products, warehouse, storage locations)
+  - Backend server running on port 3000
+  - Frontend dev server running on port 3001
+  - CORS verified (frontend origin allowed)
+  - Login flow working end-to-end (sigma/skibidi → real JWT)
+  - Fixed login payload (username field, not login)
+  - Fixed auth response handling (role as string → normalized to object)
+  - Fixed traceability page to match actual API response structure
+  - Created sample data via API:
+    - 3 raw material lots (LOT-RM-001, LOT-RM-002, LOT-RM-003)
+    - 3 QC inspections (2 PASS, 1 FAIL — auto-updated lot statuses)
+    - 2 production orders (PO-2026-001, PO-2026-002)
+    - 2 inventory transactions (IN movements)
+  - All frontend pages verified loading real data:
+    - /dashboard — stats cards with totals
+    - /dashboard/lots — 3 lots with status badges
+    - /dashboard/qc — 3 inspections with results
+    - /dashboard/production — 2 orders
+    - /dashboard/inventory — 2 transactions
+    - /dashboard/suppliers — 3 suppliers
+    - /dashboard/materials — 5 materials
+    - /dashboard/traceability — LOT-RM-001 trace shows QC history
+Remaining:
+  - Role-based views (hide nav items per role)
+  - Create/edit forms (inline or modal)
+  - AI features (endpoint, QC parsing, PPIC)
+  - Accessibility improvements
+  - Deployment
+Risks:
+  - PostgreSQL service not enabled on boot (manual start required)
+  - No refresh token — 8h session expiry
+Technical Debt:
+  - Demo login fallback still in code (harmless, useful for demos)
+  - No client-side caching (every page load hits API)
+Bugs:
+  - None known — full stack verified working
+Security Concerns:
+  - None new — all existing security measures intact
+Next Priority:
+  - Create/edit forms for lots and QC (most demo-impactful)
+  - AI features integration
+  - Polish UI for demo
+```
+
+### Infrastructure Setup (Arch Linux)
+
+```bash
+# PostgreSQL setup (one-time)
+sudo -u postgres initdb -D /var/lib/postgres/data
+sudo systemctl start postgresql
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'sima_secret';"
+sudo -u postgres psql -c "CREATE DATABASE sima_arome;"
+
+# Backend startup
+cd backend
+npm install
+npx prisma generate
+npx prisma migrate deploy
+npx ts-node --transpile-only prisma/seed.ts
+npx ts-node --transpile-only src/server.ts  # port 3000
+
+# Frontend startup
+cd frontend
+npm install
+npm run dev  # port 3001
+```
+
+### Verified API Endpoints (All Working)
+
+| Endpoint | Method | Status | Frontend Page |
+|----------|--------|--------|---------------|
+| /health | GET | ✅ 200 | — |
+| /auth/login | POST | ✅ 200 | /login |
+| /lots | GET | ✅ 200 | /dashboard/lots |
+| /lots | POST | ✅ 201 | /dashboard/lots |
+| /qc | GET | ✅ 200 | /dashboard/qc |
+| /qc | POST | ✅ 201 | /dashboard/qc |
+| /production/orders | GET | ✅ 200 | /dashboard/production |
+| /production/orders | POST | ✅ 201 | /dashboard/production |
+| /inventory | GET | ✅ 200 | /dashboard/inventory |
+| /inventory/transactions | POST | ✅ 201 | /dashboard/inventory |
+| /suppliers | GET | ✅ 200 | /dashboard/suppliers |
+| /materials | GET | ✅ 200 | /dashboard/materials |
+| /traceability/:lotNumber | GET | ✅ 200 | /dashboard/traceability |
+
+### Sample Data in Database
+
+| Table | Records | Details |
+|-------|---------|---------|
+| Roles | 5 | Admin, QC, Warehouse, Production, Manager |
+| Users | 5 | sigma (skibidi), admin, qc001, wh001, prod001 |
+| Suppliers | 3 | PT Aroma Nusantara, CV Bahan Kimia Jaya, PT Essential Oil Indo |
+| Raw Materials | 5 | Orange Oil, Coffee Extract, Vanilla, Ethanol, Citric Acid |
+| Products | 3 | Orange Extract, Coffee Flavour, Vanilla Flavour |
+| Raw Material Lots | 3 | LOT-RM-001 (APPROVED), LOT-RM-002 (APPROVED), LOT-RM-003 (REJECTED) |
+| QC Logs | 3 | 2 PASS, 1 FAIL |
+| Production Orders | 2 | PO-2026-001, PO-2026-002 (PLANNED) |
+| Inventory Transactions | 2 | IN movements |
+| Warehouses | 1 | Gudang Utama |
+| Storage Locations | 3 | Rak A1, Rak B1, Cold Storage |
+
+---
+
+*Last updated: 2026-05-27 (Full stack integration complete — frontend connected to backend with real data)*

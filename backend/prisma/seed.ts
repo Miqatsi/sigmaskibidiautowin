@@ -30,19 +30,22 @@ async function main(): Promise<void> {
 
   // --- Users ---
   const hashedPassword = await bcrypt.hash('password123', 10);
+  const sigmaPassword = await bcrypt.hash('skibidi', 10);
 
   const users = [
-    { username: 'admin', email: 'admin@sima.com', fullName: 'System Admin', roleId: adminRole.id },
-    { username: 'qc001', email: 'qc001@sima.com', fullName: 'QC Inspector 1', roleId: qcRole.id },
-    { username: 'wh001', email: 'wh001@sima.com', fullName: 'Warehouse Staff 1', roleId: warehouseRole.id },
-    { username: 'prod001', email: 'prod001@sima.com', fullName: 'Production Operator 1', roleId: productionRole.id },
+    { username: 'sigma', email: 'sigma@sima.com', fullName: 'Sigma Admin', roleId: adminRole.id, password: sigmaPassword },
+    { username: 'admin', email: 'admin@sima.com', fullName: 'System Admin', roleId: adminRole.id, password: hashedPassword },
+    { username: 'qc001', email: 'qc001@sima.com', fullName: 'QC Inspector 1', roleId: qcRole.id, password: hashedPassword },
+    { username: 'wh001', email: 'wh001@sima.com', fullName: 'Warehouse Staff 1', roleId: warehouseRole.id, password: hashedPassword },
+    { username: 'prod001', email: 'prod001@sima.com', fullName: 'Production Operator 1', roleId: productionRole.id, password: hashedPassword },
   ];
 
   for (const user of users) {
+    const { password: pw, ...userData } = user;
     await prisma.user.upsert({
-      where: { email: user.email },
+      where: { email: userData.email },
       update: {},
-      create: { ...user, password: hashedPassword },
+      create: { ...userData, password: pw },
     });
   }
 
