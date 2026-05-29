@@ -328,10 +328,10 @@ Sebelum finalize, check:
 
 **QC Computer Vision** (`POST /ai/qc-vision`)
 - ✅ Analyze incoming raw material images
-- ✅ Detect defects / contamination
-- ✅ Assess color consistency
-- ✅ Assess powder/liquid consistency
-- ✅ Technology: YOLO / OpenCV / FastAPI microservice
+- ✅ Detect defects / contamination (fresh vs rotten classification)
+- ✅ Assess color consistency (OpenCV HSV analysis)
+- 🟡 Assess powder/liquid consistency (no powder-specific model yet)
+- ✅ Technology: YOLO + OpenCV / FastAPI microservice
 - ❌ Integration with QC module (auto-attach results)
 
 **Reliability**
