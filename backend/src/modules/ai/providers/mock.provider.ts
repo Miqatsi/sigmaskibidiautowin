@@ -1,4 +1,4 @@
-import { AIProvider, AIAnalysisResult, ManufacturingContext } from '../ai.schema';
+import { AIProvider, AIAnalysisResult, ManufacturingContext, assessDataQuality } from '../ai.schema';
 import { SupplierContextData } from '../context/supplier.context';
 import { QCContextData } from '../context/qc.context';
 import { InventoryContextData } from '../context/inventory.context';
@@ -43,32 +43,58 @@ export class MockAIProvider implements AIProvider {
 
   private analyzeSupplierAnalytics(ctx: ManufacturingContext): AIAnalysisResult {
     const ranking = ctx.data.supplierRanking as SupplierRankingEntry[];
-    if (!ranking || ranking.length === 0) return this.emptyResult(ctx, 'No supplier data available for ranking.');
+    if (!ranking || ranking.length === 0) return this.emptyResult(ctx, 'Insufficient manufacturing data available to perform supplier analysis.');
 
-    const evidence: string[] = ['SUPPLIER PERFORMANCE RANKING:'];
-    ranking.forEach((s, i) => {
-      evidence.push(`${i + 1}. ${s.name} — Failure Rate: ${s.failureRate.toFixed(1)}%, Failed Lots: ${s.failedLots}/${s.totalLots}, Risk: ${s.riskLevel}`);
-    });
-
+    const dq = assessDataQuality(ranking.reduce((sum, s) => sum + s.totalLots, 0));
     const highest = ranking[0];
+    const highRiskCount = ranking.filter(s => s.riskLevel === 'HIGH').length;
+
+    const evidence: string[] = [
+      'SUPPLIER PERFORMANCE RANKING:',
+      ...ranking.filter(s => s.totalLots > 0).map((s, i) =>
+        `${i + 1}. ${s.name} — ${s.failureRate.toFixed(1)}% failure rate (${s.failedLots}/${s.totalLots} lots failed) [${s.riskLevel}]`
+      ),
+    ];
+
     if (highest.affectedBatches > 0) {
-      evidence.push(`\nProduction Impact: ${highest.name} affects ${highest.affectedBatches} batch(es) across ${highest.affectedOrders} order(s)`);
+      evidence.push(``, `PRODUCTION IMPACT:`, `${highest.name} materials used in ${highest.affectedBatches} batch(es) across ${highest.affectedOrders} order(s)`);
     }
 
     return {
-      summary: `${highest.name} has the highest QC failure rate at ${highest.failureRate.toFixed(1)}% (${highest.failedLots}/${highest.totalLots} lots failed). Risk level: ${highest.riskLevel}.`,
-      confidence: 95,
-      riskLevel: highest.riskLevel === 'HIGH' ? 'HIGH' : highest.riskLevel === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+      summary: `${highest.name} has the highest QC failure rate at ${highest.failureRate.toFixed(1)}% (${highest.failedLots}/${highest.totalLots} lots failed). ${highRiskCount} supplier(s) classified as HIGH risk.`,
+      confidence: Math.min(95, 70 + dq.sampleSize),
+      riskLevel: highest.riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM',
       intent: 'SUPPLIER_ANALYTICS',
+      dataQuality: dq,
       evidence,
+      businessImpact: {
+        level: highest.affectedBatches > 3 ? 'HIGH' : highest.affectedBatches > 0 ? 'MEDIUM' : 'LOW',
+        description: highest.affectedBatches > 0
+          ? `${highest.name} failures impact ${highest.affectedBatches} production batch(es) and ${highest.affectedOrders} order(s). Continued reliance increases production disruption risk.`
+          : `No direct production impact yet, but elevated failure rate indicates deteriorating supplier quality.`,
+        affectedBatches: highest.affectedBatches,
+        affectedOrders: highest.affectedOrders,
+      },
+      riskContributors: ranking.filter(s => s.failureRate > 0).slice(0, 5).map(s => ({
+        category: 'Supplier',
+        score: Math.round(s.failureRate),
+        description: `${s.name}: ${s.failureRate.toFixed(1)}% failure rate (${s.failedLots}/${s.totalLots})`,
+      })),
       recommendations: [
-        `Increase inspection frequency for ${highest.name}`,
-        highest.failureRate > 20 ? `Schedule immediate supplier audit for ${highest.name}` : `Monitor ${highest.name} closely`,
-        ranking.filter(s => s.riskLevel === 'HIGH').length > 1 ? 'Multiple high-risk suppliers — consider supply chain diversification' : 'Maintain current supplier monitoring protocols',
-        'Review incoming inspection criteria for high-risk suppliers',
+        `Increase incoming inspection frequency for ${highest.name} (current failure rate: ${highest.failureRate.toFixed(0)}%)`,
+        highest.failureRate > 30 ? `URGENT: Schedule immediate supplier audit for ${highest.name}` : `Schedule routine audit for ${highest.name}`,
+        highRiskCount > 1 ? `${highRiskCount} high-risk suppliers identified — evaluate supply chain diversification` : 'Monitor supplier trends monthly',
+        highest.affectedBatches > 0 ? `Review quality of ${highest.affectedBatches} batch(es) produced with ${highest.name} materials` : 'No production impact — preventive action recommended',
       ],
+      metrics: {
+        'Total Suppliers Analyzed': ranking.length,
+        'High Risk Suppliers': highRiskCount,
+        'Highest Failure Rate': `${highest.failureRate.toFixed(1)}%`,
+        'Total Lots Inspected': ranking.reduce((sum, s) => sum + s.totalLots, 0),
+        'Total Failures': ranking.reduce((sum, s) => sum + s.failedLots, 0),
+      },
       relatedEntities: {
-        suppliers: ranking.slice(0, 3).map(s => ({ id: s.id, name: s.name, code: s.code })),
+        suppliers: ranking.filter(s => s.failureRate > 0).slice(0, 5).map(s => ({ id: s.id, name: s.name, code: s.code })),
         lots: [], productionBatches: [], inventory: [],
       },
       supplierAnalysis: { supplier: highest.name, failureRate: highest.failureRate, totalInspections: highest.totalLots, failedLots: [] },
@@ -548,6 +574,7 @@ export class MockAIProvider implements AIProvider {
       confidence: 50,
       riskLevel: 'LOW',
       intent: ctx.intent,
+      dataQuality: { confidence: 'LOW', sampleSize: 0, dataQuality: 'LIMITED', note: 'Insufficient data for analysis.' },
       evidence: ['Insufficient data in system for analysis'],
       recommendations: ['Add more data to the system for meaningful analysis'],
       relatedEntities: { suppliers: [], lots: [], productionBatches: [], inventory: [] },

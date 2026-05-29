@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import { AIAnalysisResult, CopilotIntent, ManufacturingContext } from './ai.schema';
+import { AIAnalysisResult, CopilotIntent, ManufacturingContext, assessDataQuality } from './ai.schema';
 import { getAIProvider } from './providers';
 import { getSupplierContext } from './context/supplier.context';
 import { getQCContext } from './context/qc.context';
@@ -246,6 +246,16 @@ export async function analyzeQuestion(question: string): Promise<AIAnalysisResul
   // Step 6: Get AI provider and generate analysis
   const provider = getAIProvider();
   const result = await provider.analyze(context);
+
+  // Step 7: Ensure dataQuality is always present
+  if (!result.dataQuality) {
+    const sampleSize = Object.values(data).reduce((sum: number, v) => {
+      if (Array.isArray(v)) return sum + v.length;
+      if (v && typeof v === 'object' && 'totalInspections' in (v as Record<string, unknown>)) return sum + ((v as Record<string, unknown>).totalInspections as number || 0);
+      return sum;
+    }, 0);
+    result.dataQuality = assessDataQuality(sampleSize || 1);
+  }
 
   return result;
 }
