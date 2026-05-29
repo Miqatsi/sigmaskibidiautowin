@@ -16,4 +16,8 @@ router.post('/report', authorize('Admin', 'Manager'), controller.report);
 // Manufacturing summary — dashboard widget
 router.get('/summary', authorize('Admin', 'Manager', 'QC'), controller.summary);
 
+// PPIC AI Scheduling
+router.post('/schedule', authorize('Admin', 'Production', 'Manager'), controller.generateSchedule);
+router.post('/schedule/approve', authorize('Admin', 'Production', 'Manager'), controller.approveSchedule);
+
 export default router;

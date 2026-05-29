@@ -389,7 +389,7 @@ Sebelum finalize, check:
 
 **Interfaces**
 - ❌ QC approval page (dedicated)
-- ❌ PPIC scheduling board
+- ✅ PPIC scheduling board
 - ❌ Recall simulator UI
 
 **Tracking**
@@ -408,6 +408,7 @@ Sebelum finalize, check:
 **Deliverables:**
 - ✅ Full MVP workflow (backend)
 - ❌ AI Recall Impact Simulator
+- ✅ PPIC scheduling board (OR-Tools CP-SAT)
 - ❌ PPIC scheduling board
 
 **Enterprise Checks:**

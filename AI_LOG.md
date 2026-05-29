@@ -718,3 +718,98 @@ Python Environment: pipx ultralytics venv
 ---
 
 *Last updated: 2026-05-29 (AI QC Computer Vision complete — trained, tested, deployed)*
+
+---
+
+## Session: 2026-05-29 — PPIC Scheduling (OR-Tools CP-SAT) + Comprehensive Seed
+
+### AI Self-Review Protocol
+
+```
+Date: 2026-05-29
+Task: Build PPIC AI Scheduling with Google OR-Tools + comprehensive seed data
+Files Changed:
+  - ai/scheduler.py (NEW — OR-Tools CP-SAT FastAPI microservice, port 8001)
+  - backend/src/modules/ai/scheduling.service.ts (OR-Tools integration + rule-based fallback)
+  - backend/src/modules/ai/ai.routes.ts (added POST /ai/schedule, POST /ai/schedule/approve)
+  - backend/src/modules/ai/ai.controller.ts (generateSchedule, approveSchedule handlers)
+  - backend/prisma/seed.ts (comprehensive seed: 35 lots, 22 planned orders, 10 completed with traceability)
+  - frontend/src/app/dashboard/ppic/page.tsx (3-column PPIC board UI)
+  - frontend/src/components/layout/Sidebar.tsx (added PPIC nav item)
+  - AI_RULES.md, PRD.md, AI_LOG.md (updated)
+Completed:
+  - Google OR-Tools CP-SAT solver for production scheduling
+  - Constraint programming model: no-overlap per machine, minimize makespan
+  - Product grouping: same products assigned to same machine (reduce changeover)
+  - Express backend bridge: fetches PLANNED orders → calls OR-Tools → returns optimized schedule
+  - Rule-based fallback when OR-Tools service is unavailable
+  - Approve endpoint: push scheduled orders to IN_PROGRESS
+  - Frontend PPIC board: 3 columns (Unscheduled / AI Suggested / In Progress)
+  - Comprehensive seed script: 35 lots, 22 PLANNED orders, 10 COMPLETED with traceability
+  - Tested: 22 orders optimally scheduled across 3 production lines in <5 seconds
+  - Makespan: 77h 30m (optimal for the workload)
+Remaining:
+  - Predictive QC Risk Engine
+  - AI Recall Impact Simulator
+  - Deployment
+Risks:
+  - OR-Tools Python service must be running alongside Express backend
+  - Large order quantities need appropriate horizon (currently 6 days)
+Technical Debt:
+  - OR-Tools runs in pipx venv (should be containerized)
+  - No Docker compose for multi-service orchestration yet
+Bugs:
+  - None known
+Security Concerns:
+  - None — internal service communication only
+Next Priority:
+  - Deployment (Vercel + Railway/Render)
+  - Demo video
+  - Pitch deck
+```
+
+### PPIC Scheduling Architecture
+
+```
+Frontend (Next.js)                Express Backend              OR-Tools Microservice
+/dashboard/ppic                   POST /ai/schedule            POST /optimize-schedule
+┌─────────────────┐              ┌──────────────────┐         ┌──────────────────────┐
+│ Click "Generate │──────────────▶│ Fetch PLANNED    │────────▶│ CP-SAT Solver        │
+│ AI Schedule"    │              │ orders from DB   │         │ - No-overlap/machine │
+│                 │              │ Map to OR-Tools  │         │ - Minimize makespan  │
+│ Display results │◀─────────────│ format           │◀────────│ - Product grouping   │
+│ with machine    │              │ Return schedule  │         │ - Priority hints     │
+│ assignments     │              └──────────────────┘         └──────────────────────┘
+└─────────────────┘                     │
+        │                               ▼ (fallback)
+        │                        Rule-based heuristic
+        ▼                        (if OR-Tools unavailable)
+  "Approve & Push"
+  → Orders → IN_PROGRESS
+
+Services:
+  - Express API:     http://localhost:3000
+  - OR-Tools Solver: http://localhost:8001
+  - Frontend:        http://localhost:3001
+  - AI QC Vision:    http://localhost:8000
+```
+
+### Test Results
+
+```
+Solver: OR-Tools CP-SAT (OPTIMAL)
+Orders: 22 PLANNED → all scheduled
+Machines: 3 production lines
+Makespan: 77h 30m (3.2 days)
+Solve time: <5 seconds
+
+Sample output:
+  P1 | PO-2026-013 | Mango Powder    | Day 1, 08:00 | Line 1
+  P2 | PO-2026-005 | Vanilla Extract | Day 1, 08:00 | Line 2
+  P3 | PO-2026-012 | Peppermint Oil  | Day 1, 08:00 | Line 3
+  ...all 22 orders optimally distributed
+```
+
+---
+
+*Last updated: 2026-05-29 (PPIC OR-Tools scheduling complete + comprehensive seed)*

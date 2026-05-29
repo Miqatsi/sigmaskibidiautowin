@@ -133,7 +133,7 @@ A single source of truth for Sima Arome's entire manufacturing chain — from su
 | PROD-04 | Batch status: IN_PROGRESS → COMPLETED/FAILED | P0 | ✅ Done |
 | PROD-05 | Lot consumption validation (only APPROVED lots) | P0 | ✅ Done |
 | PROD-06 | Auto-complete order when all batches done | P1 | ✅ Done |
-| PROD-07 | PPIC scheduling board (AI-assisted) | P1 | ❌ Not started |
+| PROD-07 | PPIC scheduling board (AI-assisted) | P1 | ✅ Done (OR-Tools CP-SAT) |
 
 ### 5.7 Inventory & Warehousing
 

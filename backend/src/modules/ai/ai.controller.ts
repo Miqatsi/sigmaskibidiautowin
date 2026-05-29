@@ -115,3 +115,67 @@ export async function report(req: AuthenticatedRequest, res: Response): Promise<
     res.status(500).json({ success: false, message });
   }
 }
+
+// ============================================================
+// PPIC AI SCHEDULING
+// ============================================================
+
+import * as schedulingService from './scheduling.service';
+
+/**
+ * POST /ai/schedule — Generate AI-assisted production schedule
+ */
+export async function generateSchedule(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const start = Date.now();
+    const result = await schedulingService.generateSchedule();
+    const duration = Date.now() - start;
+
+    logger.info({ duration, totalOrders: result.summary.totalOrders }, '[AI/Schedule] Generated');
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      processingTime: `${duration}ms`,
+    });
+  } catch (error: unknown) {
+    logger.error({ err: error }, '[AI/Schedule]');
+    const message = error instanceof Error ? error.message : 'Schedule generation gagal.';
+    res.status(500).json({ success: false, message });
+  }
+}
+
+/**
+ * POST /ai/schedule/approve — Approve AI schedule and push orders to IN_PROGRESS
+ */
+export async function approveSchedule(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { orderIds } = req.body;
+
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      res.status(400).json({ success: false, message: 'orderIds array is required.' });
+      return;
+    }
+
+    const userId = req.user!.id;
+    const result = await schedulingService.approveSchedule(orderIds, userId);
+
+    // Audit log
+    await auditCreate(req, 'production_orders', 'BATCH_APPROVE', {
+      orderIds,
+      approved: result.approved,
+    });
+
+    logger.info({ approved: result.approved, userId }, '[AI/Schedule] Approved');
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: `${result.approved} order(s) approved and pushed to production floor.`,
+    });
+  } catch (error: unknown) {
+    logger.error({ err: error }, '[AI/Schedule/Approve]');
+    const message = error instanceof Error ? error.message : 'Approval gagal.';
+    res.status(500).json({ success: false, message });
+  }
+}
