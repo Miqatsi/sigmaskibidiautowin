@@ -330,7 +330,7 @@ Sebelum finalize, check:
 - ✅ Analyze incoming raw material images
 - ✅ Detect defects / contamination (fresh vs rotten classification)
 - ✅ Assess color consistency (OpenCV HSV analysis)
-- 🟡 Assess powder/liquid consistency (no powder-specific model yet)
+- ✅ Assess powder/liquid consistency (POST /analyze-powder — HSV variance + spatial uniformity + outlier detection)
 - ✅ Technology: YOLO + OpenCV / FastAPI microservice
 - ❌ Integration with QC module (auto-attach results)
 

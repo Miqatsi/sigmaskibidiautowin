@@ -173,7 +173,7 @@ A single source of truth for Sima Arome's entire manufacturing chain — from su
 |----|-------------|----------|--------|
 | AI-01 | AI QC endpoint (image → quality assessment) | P0 | ✅ Done |
 | AI-02 | Fruit/raw material grading (ripeness, colour, defects) | P1 | ✅ Done (YOLO detection: fresh/rotten classification) |
-| AI-03 | Extract powder analysis (colour consistency, contamination) | P1 | 🟡 Partial (colour analysis added, no powder-specific model) |
+| AI-03 | Extract powder analysis (colour consistency, contamination) | P1 | ✅ Done (OpenCV HSV variance + YOLO contamination) |
 | AI-04 | PPIC scheduling optimization | P2 | ❌ Not started |
 
 **AI QC Model Performance (YOLOv8n trained on FruitVision dataset):**
