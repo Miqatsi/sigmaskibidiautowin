@@ -2,13 +2,14 @@
 
 AI-powered manufacturing operations system for **CyberHack 2026**.
 
+---
+
 ## 🚀 Quick Start (One Command)
 
 ```bash
+chmod +x start.sh
 ./start.sh
 ```
-
-This starts everything: backend, frontend, AI vision, AI scheduler.
 
 Open **http://localhost:3001** → Login: `sigma` / `skibidi`
 
@@ -18,47 +19,115 @@ Open **http://localhost:3001** → Login: `sigma` / `skibidi`
 
 ### Prerequisites
 
-- Node.js 20+, PostgreSQL, Python 3.10+, NVIDIA GPU (for AI)
+| Tool | Version | Check |
+|------|---------|-------|
+| Node.js | 20+ | `node -v` |
+| npm | 9+ | `npm -v` |
+| PostgreSQL | 15+ | `pg_isready` |
+| Python | 3.10+ | `python3 --version` |
+| NVIDIA GPU + CUDA | (for AI) | `nvidia-smi` |
 
-### Step 1: Database
+### Step 1: Clone & Install
 
 ```bash
-sudo systemctl start postgresql
+git clone https://github.com/Miqatsi/sigmaskibidiautowin.git
+cd sigmaskibidiautowin
+
+# Install backend dependencies
 cd backend
 npm install
+cd ..
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# Install Python AI dependencies
+pip install ultralytics fastapi uvicorn python-multipart ortools torch torchvision Pillow numpy opencv-python
+```
+
+### Step 2: Database Setup
+
+```bash
+# Start PostgreSQL
+sudo systemctl start postgresql
+
+# Create database (first time only)
+sudo -u postgres psql -c "CREATE DATABASE sima_arome;" 2>/dev/null
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'sima_secret';"
+
+# Run migrations and seed data
+cd backend
 npx prisma generate
 npx prisma migrate deploy
 npx ts-node --transpile-only prisma/seed.ts
+cd ..
 ```
 
-### Step 2: Backend (port 3000)
+You should see:
+```
+🌱 SEEDING COMPLETE!
+  Login: sigma / skibidi (Admin)
+```
+
+### Step 3: Start Backend (port 3000)
 
 ```bash
 cd backend
 npx ts-node --transpile-only src/server.ts
 ```
 
-### Step 3: Frontend (port 3001)
+Verify: `curl http://localhost:3000/health` → `{"status":"ok"}`
 
+### Step 4: Start Frontend (port 3001)
+
+Open a **new terminal**:
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
 
-### Step 4: AI Services (optional — needs NVIDIA GPU)
+Verify: Open http://localhost:3001 → you should see the login page.
 
+### Step 5: Start AI Services (needs NVIDIA GPU)
+
+Open a **new terminal**:
 ```bash
 cd ai
-
-# QC Vision — detects defects, analyzes powder colour (port 8000)
 python main.py
+```
 
-# OR-Tools Scheduler — optimal production scheduling (port 8001)
+Verify: `curl http://localhost:8000/health` → `{"status":"ok","models":{"primary_qc":true}}`
+
+Open another **new terminal**:
+```bash
+cd ai
 python scheduler.py
 ```
 
-> **Note:** AI model weights (`best.pt`) and dataset are included in the repo. No training needed.
+Verify: `curl http://localhost:8001/health` → `{"status":"ok","engine":"Google OR-Tools CP-SAT"}`
+
+> **Note:** Model weights (`best.pt`) and dataset are included in the repo. No training needed.
+
+---
+
+## ✅ Test Each Feature
+
+After all services are running, login at http://localhost:3001 with `sigma` / `skibidi`:
+
+| Feature | How to Test |
+|---------|-------------|
+| **Login** | Enter sigma / skibidi → redirects to dashboard |
+| **Lot Tracking** | Go to `/dashboard/lots` → see 35 lots with statuses |
+| **QC Logs** | Go to `/dashboard/qc` → see inspection history |
+| **Visual QC (AI)** | Go to `/dashboard/visual-qc` → upload any fruit image → see detection |
+| **PPIC Schedule** | Go to `/dashboard/ppic` → click "Generate AI Schedule" → see 22 orders scheduled |
+| **Production** | Go to `/dashboard/production` → see orders |
+| **Inventory** | Go to `/dashboard/inventory` → see transactions |
+| **Traceability** | Go to `/dashboard/traceability` → search `FG-BATCH-001` → see full genealogy |
+| **Suppliers** | Go to `/dashboard/suppliers` → see 5 suppliers |
+| **Materials** | Go to `/dashboard/materials` → see 10 raw materials |
 
 ---
 
@@ -74,31 +143,49 @@ python scheduler.py
 
 ---
 
-## Features
-
-| Feature | URL | Description |
-|---------|-----|-------------|
-| Dashboard | `/dashboard` | Overview with stats |
-| Lot Tracking | `/dashboard/lots` | Raw material lots + status |
-| Quality Control | `/dashboard/qc` | QC inspection logs |
-| **Visual QC (AI)** | `/dashboard/visual-qc` | Upload image → AI detects defects |
-| Production | `/dashboard/production` | Production orders |
-| **PPIC Schedule (AI)** | `/dashboard/ppic` | OR-Tools optimal scheduling |
-| Inventory | `/dashboard/inventory` | Warehouse transactions |
-| Traceability | `/dashboard/traceability` | Full lot genealogy |
-| Suppliers | `/dashboard/suppliers` | Supplier management |
-| Materials | `/dashboard/materials` | Raw material catalog |
-
----
-
-## Services
+## Services Overview
 
 | Service | Port | What it does |
 |---------|------|-------------|
-| Frontend | 3001 | Next.js dashboard |
-| Backend | 3000 | Express REST API |
-| AI Vision | 8000 | YOLO + OpenCV (defect detection, powder analysis) |
-| AI Scheduler | 8001 | Google OR-Tools (optimal production scheduling) |
+| Frontend | 3001 | Next.js dashboard UI |
+| Backend | 3000 | Express REST API + PostgreSQL |
+| AI Vision | 8000 | YOLO defect detection + powder colour analysis |
+| AI Scheduler | 8001 | Google OR-Tools production scheduling |
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `ECONNREFUSED` on port 3000 | Backend not running. Run `cd backend && npx ts-node --transpile-only src/server.ts` |
+| `ECONNREFUSED` on port 5432 | PostgreSQL not running. Run `sudo systemctl start postgresql` |
+| Login fails | Run seed: `cd backend && npx ts-node --transpile-only prisma/seed.ts` |
+| AI Vision not working | Start AI service: `cd ai && python main.py` |
+| PPIC shows "Rule-based" | Start scheduler: `cd ai && python scheduler.py` |
+| `ModuleNotFoundError: ultralytics` | Install: `pip install ultralytics fastapi uvicorn ortools torch` |
+| Database doesn't exist | Run: `sudo -u postgres psql -c "CREATE DATABASE sima_arome;"` |
+| Frontend blank page | Clear localStorage in browser, refresh |
+
+---
+
+## Project Structure
+
+```
+sigmaskibidiautowin/
+├── backend/              # Express + Prisma + TypeScript (port 3000)
+├── frontend/             # Next.js 16 + Tailwind 4 (port 3001)
+├── ai/                   # Python AI services
+│   ├── main.py           # QC Vision API (port 8000)
+│   ├── scheduler.py      # OR-Tools Scheduler (port 8001)
+│   ├── train.py          # YOLO training (optional)
+│   └── runs/detect/train/weights/best.pt  # Trained model (6MB)
+├── dataset/              # Training dataset (included)
+├── start.sh              # One-command startup script
+├── PRD.md                # Product Requirements Document
+├── AI_LOG.md             # Development log
+└── AI_RULES.md           # AI coding standards
+```
 
 ---
 
@@ -108,7 +195,7 @@ python scheduler.py
 - **Backend:** Express 5 + Prisma 7 + PostgreSQL + Zod
 - **AI Vision:** YOLOv8 + OpenCV + FastAPI + CUDA
 - **AI Scheduling:** Google OR-Tools CP-SAT + FastAPI
-- **Security:** JWT + bcrypt + RBAC + audit trails
+- **Security:** JWT + bcrypt + RBAC (5 roles) + audit trails
 
 ---
 
