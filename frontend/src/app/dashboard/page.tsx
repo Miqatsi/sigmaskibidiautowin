@@ -2,189 +2,155 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
-interface DashboardStats {
-  lots: { total: number; pendingQc: number };
-  production: { total: number; inProgress: number };
-  qc: { total: number; recentFails: number };
-  inventory: { total: number };
+interface AISummary {
+  totalLots: number;
+  pendingQC: number;
+  failedQC: number;
+  activeOrders: number;
+  recentTransactions: number;
+  healthScore: number;
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [summary, setSummary] = useState<AISummary | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
+  useEffect(() => { loadSummary(); }, []);
 
-  async function loadStats() {
+  async function loadSummary() {
     try {
-      // Load stats from multiple endpoints in parallel
-      const [lotsRes, productionRes, qcRes, inventoryRes] = await Promise.allSettled([
-        api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/lots?limit=1'),
-        api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/production/orders?limit=1'),
-        api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/qc?limit=1'),
-        api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/inventory/transactions?limit=1'),
-      ]);
-
-      setStats({
-        lots: {
-          total: lotsRes.status === 'fulfilled' ? (lotsRes.value.pagination?.total ?? 0) : 0,
-          pendingQc: 0,
-        },
-        production: {
-          total: productionRes.status === 'fulfilled' ? (productionRes.value.pagination?.total ?? 0) : 0,
-          inProgress: 0,
-        },
-        qc: {
-          total: qcRes.status === 'fulfilled' ? (qcRes.value.pagination?.total ?? 0) : 0,
-          recentFails: 0,
-        },
-        inventory: {
-          total: inventoryRes.status === 'fulfilled' ? (inventoryRes.value.pagination?.total ?? 0) : 0,
-        },
-      });
+      const res = await api.get<{ success: boolean; data: AISummary }>('/ai/summary');
+      if (res.success && res.data) setSummary(res.data);
     } catch {
-      // Stats are non-critical, show zeros
-      setStats({ lots: { total: 0, pendingQc: 0 }, production: { total: 0, inProgress: 0 }, qc: { total: 0, recentFails: 0 }, inventory: { total: 0 } });
+      setSummary({ totalLots: 0, pendingQC: 0, failedQC: 0, activeOrders: 0, recentTransactions: 0, healthScore: 0 });
     } finally {
       setLoading(false);
     }
   }
 
-  const summaryCards = [
-    {
-      title: 'Raw Material Lots',
-      value: stats?.lots.total ?? '—',
-      subtitle: 'Total lots tracked',
-      href: '/dashboard/lots',
-      color: 'bg-blue-50 border-blue-200',
-      icon: '📦',
-    },
-    {
-      title: 'Production Orders',
-      value: stats?.production.total ?? '—',
-      subtitle: 'Total orders',
-      href: '/dashboard/production',
-      color: 'bg-purple-50 border-purple-200',
-      icon: '🏭',
-    },
-    {
-      title: 'QC Inspections',
-      value: stats?.qc.total ?? '—',
-      subtitle: 'Total inspections',
-      href: '/dashboard/qc',
-      color: 'bg-green-50 border-green-200',
-      icon: '✅',
-    },
-    {
-      title: 'Inventory Moves',
-      value: stats?.inventory.total ?? '—',
-      subtitle: 'Total transactions',
-      href: '/dashboard/inventory',
-      color: 'bg-orange-50 border-orange-200',
-      icon: '📋',
-    },
-  ];
+  function healthColor(score: number): string {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  }
+
+  function healthBg(score: number): string {
+    if (score >= 80) return 'bg-green-50 border-green-200';
+    if (score >= 50) return 'bg-yellow-50 border-yellow-200';
+    return 'bg-red-50 border-red-200';
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-base text-gray-600 mt-1">
-          Overview of manufacturing operations
+        <h1 className="text-2xl font-bold text-gray-900">Manufacturing Dashboard</h1>
+        <p className="text-base text-gray-600 mt-1">Real-time operational overview</p>
+      </div>
+
+      {/* Plant Health Score — Hero Card */}
+      <div className={`rounded-xl border-2 p-6 ${summary ? healthBg(summary.healthScore) : 'bg-gray-50 border-gray-200'}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Plant Health Score</p>
+            {loading ? (
+              <div className="h-12 w-24 bg-gray-200 rounded animate-pulse mt-2" />
+            ) : (
+              <p className={`text-5xl font-bold mt-1 ${healthColor(summary?.healthScore || 0)}`}>
+                {summary?.healthScore ?? 0}<span className="text-2xl text-gray-400">/100</span>
+              </p>
+            )}
+          </div>
+          <div className="text-6xl opacity-30">🏭</div>
+        </div>
+        <p className="text-sm text-gray-600 mt-2">
+          {(summary?.healthScore || 0) >= 80 ? 'All systems operational' :
+           (summary?.healthScore || 0) >= 50 ? 'Some issues require attention' :
+           'Critical issues detected — immediate action needed'}
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryCards.map((card) => (
-          <Link key={card.href} href={card.href}>
-            <div
-              className={`rounded-xl border p-5 transition-shadow hover:shadow-md cursor-pointer ${card.color}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-2xl">{card.icon}</span>
-                {loading && (
-                  <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                )}
-              </div>
-              <p className="text-3xl font-bold text-gray-900 mt-3">{card.value}</p>
-              <p className="text-base font-medium text-gray-700 mt-1">{card.title}</p>
-              <p className="text-sm text-gray-500">{card.subtitle}</p>
-            </div>
-          </Link>
-        ))}
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <KPICard icon="📦" label="Total Lots" value={summary?.totalLots} loading={loading} href="/dashboard/lots" />
+        <KPICard icon="⏳" label="Pending QC" value={summary?.pendingQC} loading={loading} href="/dashboard/qc" color={summary?.pendingQC ? 'warning' : undefined} />
+        <KPICard icon="❌" label="QC Failures" value={summary?.failedQC} loading={loading} href="/dashboard/qc" color={summary?.failedQC ? 'danger' : undefined} />
+        <KPICard icon="⚙️" label="Active Orders" value={summary?.activeOrders} loading={loading} href="/dashboard/production" />
+        <KPICard icon="📋" label="Inventory Moves" value={summary?.recentTransactions} loading={loading} href="/dashboard/inventory" />
       </div>
 
       {/* Quick Actions */}
-      <Card title="Quick Actions">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <Link
-            href="/dashboard/lots"
-            className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-xl">📦</span>
-            <div>
-              <p className="font-medium text-gray-900">Receive Lot</p>
-              <p className="text-sm text-gray-500">Register incoming materials</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/qc"
-            className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-xl">🔬</span>
-            <div>
-              <p className="font-medium text-gray-900">QC Inspection</p>
-              <p className="text-sm text-gray-500">Perform quality check</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/production"
-            className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-xl">⚙️</span>
-            <div>
-              <p className="font-medium text-gray-900">Start Production</p>
-              <p className="text-sm text-gray-500">Create production order</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/traceability"
-            className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-xl">🔍</span>
-            <div>
-              <p className="font-medium text-gray-900">Trace Lot</p>
-              <p className="text-sm text-gray-500">Track lot history</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/suppliers"
-            className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-xl">🤝</span>
-            <div>
-              <p className="font-medium text-gray-900">Manage Suppliers</p>
-              <p className="text-sm text-gray-500">View & add suppliers</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/inventory"
-            className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-xl">🏪</span>
-            <div>
-              <p className="font-medium text-gray-900">Inventory</p>
-              <p className="text-sm text-gray-500">Check stock levels</p>
-            </div>
-          </Link>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card title="🚀 Quick Actions">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <QuickAction href="/dashboard/lots" icon="📦" title="Receive Lot" desc="Register incoming materials" />
+            <QuickAction href="/dashboard/qc" icon="🔬" title="QC Inspection" desc="Perform quality check" />
+            <QuickAction href="/dashboard/recall" icon="🚨" title="Recall Simulator" desc="Simulate contamination impact" />
+            <QuickAction href="/dashboard/ai" icon="🤖" title="AI Copilot" desc="Ask manufacturing questions" />
+            <QuickAction href="/dashboard/traceability" icon="🔍" title="Trace Lot" desc="Track lot history" />
+            <QuickAction href="/dashboard/production" icon="⚙️" title="Production" desc="Manage orders & batches" />
+          </div>
+        </Card>
+
+        <Card title="⚠️ Alerts">
+          <div className="space-y-3">
+            {summary?.pendingQC ? (
+              <AlertItem level="warning" message={`${summary.pendingQC} lot(s) awaiting QC inspection`} />
+            ) : null}
+            {summary?.failedQC ? (
+              <AlertItem level="danger" message={`${summary.failedQC} QC failure(s) detected — investigate`} />
+            ) : null}
+            {!summary?.pendingQC && !summary?.failedQC && (
+              <div className="text-center py-6 text-gray-500">
+                <p className="text-lg">✅ No active alerts</p>
+                <p className="text-sm">All operations running smoothly</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function KPICard({ icon, label, value, loading, href, color }: {
+  icon: string; label: string; value?: number; loading: boolean; href: string; color?: 'warning' | 'danger';
+}) {
+  const borderColor = color === 'danger' ? 'border-red-200 bg-red-50' : color === 'warning' ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 bg-white';
+  return (
+    <Link href={href}>
+      <div className={`rounded-xl border p-4 hover:shadow-md transition-shadow cursor-pointer ${borderColor}`}>
+        <div className="flex items-center justify-between">
+          <span className="text-xl">{icon}</span>
+          {loading && <div className="h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />}
         </div>
-      </Card>
+        <p className="text-2xl font-bold text-gray-900 mt-2">{loading ? '—' : (value ?? 0)}</p>
+        <p className="text-sm text-gray-600">{label}</p>
+      </div>
+    </Link>
+  );
+}
+
+function QuickAction({ href, icon, title, desc }: { href: string; icon: string; title: string; desc: string }) {
+  return (
+    <Link href={href} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+      <span className="text-xl">{icon}</span>
+      <div>
+        <p className="font-medium text-gray-900 text-sm">{title}</p>
+        <p className="text-xs text-gray-500">{desc}</p>
+      </div>
+    </Link>
+  );
+}
+
+function AlertItem({ level, message }: { level: 'warning' | 'danger'; message: string }) {
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-lg border ${level === 'danger' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+      <Badge variant={level}>{level === 'danger' ? 'CRITICAL' : 'WARNING'}</Badge>
+      <span className="text-sm text-gray-700">{message}</span>
     </div>
   );
 }
