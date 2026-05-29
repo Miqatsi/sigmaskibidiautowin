@@ -12,9 +12,14 @@ export type CopilotQueryInput = z.infer<typeof CopilotQuerySchema>;
 
 export type CopilotIntent =
   | 'SUPPLIER_RISK'
+  | 'SUPPLIER_ANALYTICS'
   | 'QC_ANALYSIS'
+  | 'QC_ANALYTICS'
   | 'INVENTORY_RISK'
+  | 'INVENTORY_ANALYTICS'
   | 'PRODUCTION_ANALYSIS'
+  | 'PRODUCTION_ANALYTICS'
+  | 'RISK_ANALYTICS'
   | 'TRACEABILITY'
   | 'GENERAL';
 

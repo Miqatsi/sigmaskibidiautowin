@@ -3,6 +3,7 @@ import { SupplierContextData } from '../context/supplier.context';
 import { QCContextData } from '../context/qc.context';
 import { InventoryContextData } from '../context/inventory.context';
 import { ProductionContextData } from '../context/production.context';
+import { SupplierRankingEntry, QCAnalytics, ProductionAnalytics, InventoryAnalytics, RiskAnalytics } from '../context/analytics.context';
 
 /**
  * Context-Aware Mock AI Provider.
@@ -15,17 +16,225 @@ export class MockAIProvider implements AIProvider {
     switch (context.intent) {
       case 'SUPPLIER_RISK':
         return this.analyzeSupplierRisk(context);
+      case 'SUPPLIER_ANALYTICS':
+        return this.analyzeSupplierAnalytics(context);
       case 'QC_ANALYSIS':
         return this.analyzeQC(context);
+      case 'QC_ANALYTICS':
+        return this.analyzeQCAnalytics(context);
       case 'INVENTORY_RISK':
         return this.analyzeInventoryRisk(context);
+      case 'INVENTORY_ANALYTICS':
+        return this.analyzeInventoryAnalytics(context);
       case 'PRODUCTION_ANALYSIS':
         return this.analyzeProduction(context);
+      case 'PRODUCTION_ANALYTICS':
+        return this.analyzeProductionAnalytics(context);
+      case 'RISK_ANALYTICS':
+        return this.analyzeRiskAnalytics(context);
       case 'TRACEABILITY':
         return this.analyzeTraceability(context);
       default:
         return this.generalAnalysis(context);
     }
+  }
+
+  // --- ANALYTICS HANDLERS ---
+
+  private analyzeSupplierAnalytics(ctx: ManufacturingContext): AIAnalysisResult {
+    const ranking = ctx.data.supplierRanking as SupplierRankingEntry[];
+    if (!ranking || ranking.length === 0) return this.emptyResult(ctx, 'No supplier data available for ranking.');
+
+    const evidence: string[] = ['SUPPLIER PERFORMANCE RANKING:'];
+    ranking.forEach((s, i) => {
+      evidence.push(`${i + 1}. ${s.name} — Failure Rate: ${s.failureRate.toFixed(1)}%, Failed Lots: ${s.failedLots}/${s.totalLots}, Risk: ${s.riskLevel}`);
+    });
+
+    const highest = ranking[0];
+    if (highest.affectedBatches > 0) {
+      evidence.push(`\nProduction Impact: ${highest.name} affects ${highest.affectedBatches} batch(es) across ${highest.affectedOrders} order(s)`);
+    }
+
+    return {
+      summary: `${highest.name} has the highest QC failure rate at ${highest.failureRate.toFixed(1)}% (${highest.failedLots}/${highest.totalLots} lots failed). Risk level: ${highest.riskLevel}.`,
+      confidence: 95,
+      riskLevel: highest.riskLevel === 'HIGH' ? 'HIGH' : highest.riskLevel === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+      intent: 'SUPPLIER_ANALYTICS',
+      evidence,
+      recommendations: [
+        `Increase inspection frequency for ${highest.name}`,
+        highest.failureRate > 20 ? `Schedule immediate supplier audit for ${highest.name}` : `Monitor ${highest.name} closely`,
+        ranking.filter(s => s.riskLevel === 'HIGH').length > 1 ? 'Multiple high-risk suppliers — consider supply chain diversification' : 'Maintain current supplier monitoring protocols',
+        'Review incoming inspection criteria for high-risk suppliers',
+      ],
+      relatedEntities: {
+        suppliers: ranking.slice(0, 3).map(s => ({ id: s.id, name: s.name, code: s.code })),
+        lots: [], productionBatches: [], inventory: [],
+      },
+      supplierAnalysis: { supplier: highest.name, failureRate: highest.failureRate, totalInspections: highest.totalLots, failedLots: [] },
+    };
+  }
+
+  private analyzeQCAnalytics(ctx: ManufacturingContext): AIAnalysisResult {
+    const data = ctx.data.qcAnalytics as QCAnalytics;
+    if (!data) return this.emptyResult(ctx, 'No QC data available for analysis.');
+
+    const evidence: string[] = [
+      `Total inspections: ${data.totalInspections}`,
+      `Total failures: ${data.totalFailures}`,
+      `Overall failure rate: ${data.overallFailureRate.toFixed(1)}%`,
+    ];
+
+    if (data.failuresBySupplier.length > 0) {
+      evidence.push('\nFailures by supplier:');
+      data.failuresBySupplier.forEach(s => evidence.push(`  ${s.supplier}: ${s.failures} failures (${s.rate.toFixed(1)}%)`));
+    }
+
+    if (data.highRiskLots.length > 0) {
+      evidence.push(`\nHigh-risk lots requiring attention: ${data.highRiskLots.length}`);
+      data.highRiskLots.forEach(l => evidence.push(`  ${l.lotNumber} (${l.material}): ${l.reason}`));
+    }
+
+    if (data.recentFailures.length > 0) {
+      evidence.push('\nRecent failures:');
+      data.recentFailures.slice(0, 5).forEach(f => evidence.push(`  ${f.lotNumber} — ${f.material} from ${f.supplier}${f.notes ? `: ${f.notes}` : ''}`));
+    }
+
+    return {
+      summary: `QC Overview: ${data.totalFailures} failure(s) out of ${data.totalInspections} inspections (${data.overallFailureRate.toFixed(1)}% rate). ${data.highRiskLots.length} lot(s) need immediate attention.`,
+      confidence: 93,
+      riskLevel: data.overallFailureRate > 15 ? 'HIGH' : data.overallFailureRate > 5 ? 'MEDIUM' : 'LOW',
+      intent: 'QC_ANALYTICS',
+      evidence,
+      recommendations: [
+        data.highRiskLots.length > 0 ? `Prioritize inspection for ${data.highRiskLots.length} pending lot(s)` : 'All lots inspected — no backlog',
+        data.overallFailureRate > 10 ? 'Review inspection criteria — failure rate above target' : 'Failure rate within acceptable range',
+        data.failuresBySupplier.length > 0 ? `Focus on ${data.failuresBySupplier[0].supplier} — highest failure contributor` : 'No supplier-specific issues',
+      ],
+      relatedEntities: {
+        suppliers: data.failuresBySupplier.map(s => ({ id: '', name: s.supplier, code: '' })),
+        lots: data.highRiskLots.map(l => ({ id: '', lotNumber: l.lotNumber, status: 'PENDING_QC' })),
+        productionBatches: [], inventory: [],
+      },
+    };
+  }
+
+  private analyzeProductionAnalytics(ctx: ManufacturingContext): AIAnalysisResult {
+    const data = ctx.data.productionAnalytics as ProductionAnalytics;
+    if (!data) return this.emptyResult(ctx, 'No production data available.');
+
+    const evidence: string[] = [
+      `Total orders: ${data.totalOrders}`,
+      `In progress: ${data.inProgress}`,
+      `Completed: ${data.completed}`,
+      `Planned: ${data.planned}`,
+      `Blocked: ${data.blockedOrders.length}`,
+    ];
+
+    if (data.blockedOrders.length > 0) {
+      evidence.push('\nBLOCKED ORDERS:');
+      data.blockedOrders.forEach(o => evidence.push(`  ${o.orderNumber} (${o.product}): ${o.reason}`));
+    }
+
+    if (data.atRiskBatches.length > 0) {
+      evidence.push('\nAT-RISK BATCHES:');
+      data.atRiskBatches.forEach(b => evidence.push(`  ${b.lotNumber}: ${b.reason}`));
+    }
+
+    const hasIssues = data.blockedOrders.length > 0 || data.atRiskBatches.length > 0;
+
+    return {
+      summary: hasIssues
+        ? `${data.blockedOrders.length} production order(s) blocked, ${data.atRiskBatches.length} batch(es) at risk. ${data.blockedOrders.map(o => `${o.orderNumber}: ${o.reason}`).join('. ')}`
+        : `Production running smoothly. ${data.inProgress} in progress, ${data.completed} completed, ${data.planned} planned.`,
+      confidence: 92,
+      riskLevel: data.blockedOrders.length > 0 ? 'HIGH' : data.atRiskBatches.length > 0 ? 'MEDIUM' : 'LOW',
+      intent: 'PRODUCTION_ANALYTICS',
+      evidence,
+      recommendations: hasIssues ? [
+        'Expedite QC approval for pending lots',
+        'Review material availability for blocked orders',
+        data.atRiskBatches.length > 0 ? 'Investigate stalled batches — may need intervention' : '',
+        'Communicate delays to downstream stakeholders',
+      ].filter(Boolean) : ['Continue monitoring production schedule', 'Ensure material pipeline is healthy'],
+      relatedEntities: { suppliers: [], lots: [], productionBatches: data.atRiskBatches.map(b => ({ id: '', lotNumber: b.lotNumber, status: b.status })), inventory: [] },
+    };
+  }
+
+  private analyzeInventoryAnalytics(ctx: ManufacturingContext): AIAnalysisResult {
+    const data = ctx.data.inventoryAnalytics as InventoryAnalytics;
+    if (!data) return this.emptyResult(ctx, 'No inventory data available.');
+
+    const evidence: string[] = [
+      `Storage locations: ${data.totalLocations}`,
+      `Total transactions: ${data.totalTransactions}`,
+    ];
+
+    if (data.expiredLots.length > 0) {
+      evidence.push(`\n🔴 EXPIRED LOTS (${data.expiredLots.length}):`);
+      data.expiredLots.forEach(l => evidence.push(`  ${l.lotNumber} — ${l.material}, expired ${l.daysExpired} day(s) ago (${l.quantity} ${l.unit})`));
+    }
+
+    if (data.expiringLots.length > 0) {
+      evidence.push(`\n🟡 EXPIRING SOON (${data.expiringLots.length}):`);
+      data.expiringLots.forEach(l => evidence.push(`  ${l.lotNumber} — ${l.material}, expires in ${l.daysLeft} day(s) (${l.quantity} ${l.unit})`));
+    }
+
+    const hasCritical = data.expiredLots.length > 0;
+    const hasWarning = data.expiringLots.length > 0;
+
+    return {
+      summary: hasCritical
+        ? `CRITICAL: ${data.expiredLots.length} lot(s) have EXPIRED and must be quarantined immediately. ${data.expiringLots.length} lot(s) expiring within 7 days.`
+        : hasWarning
+        ? `${data.expiringLots.length} lot(s) expiring within 7 days — prioritize usage or plan disposal.`
+        : `All inventory within acceptable parameters. ${data.totalLocations} locations, ${data.totalTransactions} transactions recorded.`,
+      confidence: 94,
+      riskLevel: hasCritical ? 'CRITICAL' : hasWarning ? 'MEDIUM' : 'LOW',
+      intent: 'INVENTORY_ANALYTICS',
+      evidence,
+      recommendations: [
+        ...(hasCritical ? ['🚨 IMMEDIATE: Quarantine all expired lots — do not use in production'] : []),
+        ...(hasWarning ? ['Prioritize expiring lots in next production batch', 'Review FIFO compliance'] : []),
+        ...(!hasCritical && !hasWarning ? ['Continue regular stock audits', 'Monitor expiry dates weekly'] : []),
+      ],
+      relatedEntities: {
+        suppliers: [], productionBatches: [], inventory: [],
+        lots: [...data.expiredLots, ...data.expiringLots].map(l => ({ id: '', lotNumber: l.lotNumber, status: 'AT_RISK' })),
+      },
+    };
+  }
+
+  private analyzeRiskAnalytics(ctx: ManufacturingContext): AIAnalysisResult {
+    const data = ctx.data.riskAnalytics as RiskAnalytics;
+    if (!data) return this.emptyResult(ctx, 'Unable to calculate risk analytics.');
+
+    const evidence: string[] = [`Overall Risk Score: ${data.overallRiskScore}/100`];
+
+    if (data.topRisks.length > 0) {
+      evidence.push('\nTOP OPERATIONAL RISKS:');
+      data.topRisks.forEach((r, i) => evidence.push(`  ${i + 1}. [${r.severity}] ${r.category}: ${r.description}`));
+    }
+
+    if (data.priorityActions.length > 0) {
+      evidence.push('\nPRIORITY ACTIONS:');
+      data.priorityActions.forEach((a, i) => evidence.push(`  ${i + 1}. ${a}`));
+    }
+
+    const hasCritical = data.topRisks.some(r => r.severity === 'CRITICAL');
+    const hasHigh = data.topRisks.some(r => r.severity === 'HIGH');
+
+    return {
+      summary: data.topRisks.length > 0
+        ? `${data.topRisks.length} operational risk(s) identified. ${hasCritical ? 'CRITICAL issues require immediate action.' : hasHigh ? 'High-priority items need attention.' : 'Moderate risks — monitor closely.'} Overall risk score: ${data.overallRiskScore}/100.`
+        : `No significant operational risks detected. Risk score: ${data.overallRiskScore}/100. All systems healthy.`,
+      confidence: 91,
+      riskLevel: hasCritical ? 'CRITICAL' : hasHigh ? 'HIGH' : data.topRisks.length > 0 ? 'MEDIUM' : 'LOW',
+      intent: 'RISK_ANALYTICS',
+      evidence,
+      recommendations: data.priorityActions.length > 0 ? data.priorityActions : ['Continue standard monitoring protocols'],
+      relatedEntities: { suppliers: [], lots: [], productionBatches: [], inventory: [] },
+    };
   }
 
   private analyzeSupplierRisk(ctx: ManufacturingContext): AIAnalysisResult {

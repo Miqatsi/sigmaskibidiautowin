@@ -5,6 +5,7 @@ import { getSupplierContext } from './context/supplier.context';
 import { getQCContext } from './context/qc.context';
 import { getInventoryContext } from './context/inventory.context';
 import { getProductionContext } from './context/production.context';
+import { getSupplierRanking, getQCAnalytics, getProductionAnalytics, getInventoryAnalytics, getRiskAnalytics } from './context/analytics.context';
 
 // ============================================================
 // ENTITY EXTRACTION
@@ -86,18 +87,46 @@ async function extractEntity(question: string): Promise<ExtractedEntity> {
 function detectIntent(question: string, entity: ExtractedEntity): CopilotIntent {
   const q = question.toLowerCase();
 
-  // Entity-based intent detection
-  if (entity.type === 'SUPPLIER') return 'SUPPLIER_RISK';
+  // Entity-based intent detection (specific entity referenced)
+  if (entity.type === 'SUPPLIER' && entity.validated) return 'SUPPLIER_RISK';
+  if (entity.type === 'SUPPLIER' && !entity.validated) return 'SUPPLIER_RISK';
   if (entity.type === 'LOT' && (q.includes('fail') || q.includes('qc') || q.includes('reject') || q.includes('gagal'))) return 'QC_ANALYSIS';
   if (entity.type === 'LOT' && (q.includes('trace') || q.includes('contaminated') || q.includes('recall') || q.includes('impact'))) return 'TRACEABILITY';
-  if (entity.type === 'LOT') return 'QC_ANALYSIS'; // Default for lot references
+  if (entity.type === 'LOT') return 'QC_ANALYSIS';
 
-  // Keyword-based intent detection
-  if (q.includes('supplier') && (q.includes('risk') || q.includes('rate') || q.includes('worst') || q.includes('best') || q.includes('perform') || q.includes('risky'))) return 'SUPPLIER_RISK';
-  if (q.includes('qc') || q.includes('fail') || q.includes('inspect') || q.includes('quality') || q.includes('gagal') || q.includes('reject')) return 'QC_ANALYSIS';
-  if (q.includes('inventory') || q.includes('warehouse') || q.includes('stock') || q.includes('vulnerable') || q.includes('quarantine') || q.includes('storage') || q.includes('expir')) return 'INVENTORY_RISK';
-  if (q.includes('production') || q.includes('order') || q.includes('batch') || q.includes('blocked') || q.includes('delay') || q.includes('schedule')) return 'PRODUCTION_ANALYSIS';
-  if (q.includes('trace') || q.includes('contaminated') || q.includes('affected') || q.includes('recall') || q.includes('impact') || q.includes('lacak')) return 'TRACEABILITY';
+  // Analytics intents (aggregation/ranking questions — no specific entity)
+  if (q.includes('ranking') || q.includes('rank') || q.includes('top') || q.includes('worst') || q.includes('best') || q.includes('highest') || q.includes('most')) {
+    if (q.includes('supplier')) return 'SUPPLIER_ANALYTICS';
+    if (q.includes('qc') || q.includes('fail') || q.includes('inspect')) return 'QC_ANALYTICS';
+    if (q.includes('production') || q.includes('order') || q.includes('batch')) return 'PRODUCTION_ANALYTICS';
+    if (q.includes('inventory') || q.includes('stock') || q.includes('expir')) return 'INVENTORY_ANALYTICS';
+    return 'RISK_ANALYTICS';
+  }
+
+  // Risk/operational overview
+  if (q.includes('risk') && (q.includes('today') || q.includes('operational') || q.includes('biggest') || q.includes('top'))) return 'RISK_ANALYTICS';
+  if (q.includes('priority') || q.includes('attention') || q.includes('urgent')) return 'RISK_ANALYTICS';
+
+  // Supplier analytics (no specific supplier named)
+  if (q.includes('supplier') && (q.includes('rate') || q.includes('perform') || q.includes('risky') || q.includes('which'))) return 'SUPPLIER_ANALYTICS';
+
+  // QC analytics
+  if ((q.includes('qc') || q.includes('fail') || q.includes('inspect')) && (q.includes('trend') || q.includes('how many') || q.includes('which lot'))) return 'QC_ANALYTICS';
+
+  // Production analytics
+  if (q.includes('blocked') || q.includes('delay') || q.includes('stalled')) return 'PRODUCTION_ANALYTICS';
+  if (q.includes('production') && (q.includes('which') || q.includes('status'))) return 'PRODUCTION_ANALYTICS';
+
+  // Inventory analytics
+  if (q.includes('expir') || q.includes('vulnerable') || q.includes('quarantine')) return 'INVENTORY_ANALYTICS';
+  if (q.includes('inventory') && (q.includes('which') || q.includes('health'))) return 'INVENTORY_ANALYTICS';
+
+  // Standard keyword-based
+  if (q.includes('supplier') && q.includes('risk')) return 'SUPPLIER_RISK';
+  if (q.includes('qc') || q.includes('fail') || q.includes('quality') || q.includes('reject')) return 'QC_ANALYSIS';
+  if (q.includes('inventory') || q.includes('warehouse') || q.includes('stock')) return 'INVENTORY_RISK';
+  if (q.includes('production') || q.includes('order') || q.includes('batch')) return 'PRODUCTION_ANALYSIS';
+  if (q.includes('trace') || q.includes('contaminated') || q.includes('recall') || q.includes('impact')) return 'TRACEABILITY';
 
   return 'GENERAL';
 }
@@ -109,20 +138,31 @@ function detectIntent(question: string, entity: ExtractedEntity): CopilotIntent 
 async function retrieveContext(intent: CopilotIntent, question: string, entity: ExtractedEntity): Promise<Record<string, unknown>> {
   switch (intent) {
     case 'SUPPLIER_RISK':
-      // Pass validated supplier name for specific lookup, or undefined for all
-      return {
-        supplier: await getSupplierContext(entity.validated ? entity.name! : undefined),
-        entity,
-      };
+      return { supplier: await getSupplierContext(entity.validated ? entity.name! : undefined), entity };
+
+    case 'SUPPLIER_ANALYTICS':
+      return { supplierRanking: await getSupplierRanking(), entity };
 
     case 'QC_ANALYSIS':
       return { qc: await getQCContext(entity.name || undefined), entity };
 
+    case 'QC_ANALYTICS':
+      return { qcAnalytics: await getQCAnalytics(), entity };
+
     case 'INVENTORY_RISK':
       return { inventory: await getInventoryContext(), entity };
 
+    case 'INVENTORY_ANALYTICS':
+      return { inventoryAnalytics: await getInventoryAnalytics(), entity };
+
     case 'PRODUCTION_ANALYSIS':
       return { production: await getProductionContext(), entity };
+
+    case 'PRODUCTION_ANALYTICS':
+      return { productionAnalytics: await getProductionAnalytics(), entity };
+
+    case 'RISK_ANALYTICS':
+      return { riskAnalytics: await getRiskAnalytics(), entity };
 
     case 'TRACEABILITY': {
       const qc = await getQCContext(entity.name || undefined);
@@ -147,14 +187,33 @@ async function retrieveContext(intent: CopilotIntent, question: string, entity: 
 
 /**
  * Entity-Aware AI Copilot.
- * Flow: Question → Entity Extraction → Validation → Intent Detection → Context Retrieval → Analysis
+ * Flow: Question → Intent Pre-check → Entity Extraction → Validation → Context Retrieval → Analysis
  *
  * RULES:
  * - Never generate risk assessment for entities that don't exist
  * - Never fall back to generic summaries when a specific entity is referenced
  * - Every claim must come from the database
+ * - Analytics questions skip entity extraction
  */
 export async function analyzeQuestion(question: string): Promise<AIAnalysisResult> {
+  const q = question.toLowerCase();
+
+  // Pre-check: is this an analytics/aggregation question? (no specific entity)
+  const isAnalyticsQuestion = (
+    (q.includes('which') || q.includes('ranking') || q.includes('top') || q.includes('highest') || q.includes('worst') || q.includes('most') || q.includes('how many')) &&
+    !q.match(/\b(PT|CV)\s+[A-Z]/i) && // No specific supplier name
+    !q.match(/\b[A-Z]{2,}-[\w-]+\b/) // No specific lot number
+  );
+
+  if (isAnalyticsQuestion) {
+    // Skip entity extraction — go straight to analytics intent detection
+    const intent = detectIntent(question, { type: 'NONE', name: null, validated: false, dbId: null });
+    const data = await retrieveContext(intent, question, { type: 'NONE', name: null, validated: false, dbId: null });
+    const context: ManufacturingContext = { intent, question, data };
+    const provider = getAIProvider();
+    return provider.analyze(context);
+  }
+
   // Step 1: Extract and validate entity
   const entity = await extractEntity(question);
 
