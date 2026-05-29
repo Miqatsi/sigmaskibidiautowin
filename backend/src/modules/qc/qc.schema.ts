@@ -13,10 +13,7 @@ export const CreateQCSchema = z.object({
   batchId: z.string().uuid('Batch ID tidak valid').optional(),
   notes: z.string().optional(),
   metrics: z.record(z.unknown()).optional(), // Flexible JSON for measurement data
-}).refine(
-  (data) => data.rawMaterialLotId || data.batchId,
-  { message: 'Harus menyertakan rawMaterialLotId atau batchId' }
-);
+});
 
 export const UpdateQCSchema = z.object({
   result: z.enum(QCResult).optional(),
