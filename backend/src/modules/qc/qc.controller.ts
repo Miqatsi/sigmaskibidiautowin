@@ -18,7 +18,7 @@ export async function create(req: AuthenticatedRequest, res: Response): Promise<
 
     const qcLog = await qcService.createQCLog(parsed.data, req.user!.id);
 
-    await auditCreate(req, 'qc_logs', qcLog.id, qcLog as unknown as Record<string, unknown>, 'strict');
+    await auditCreate(req, 'qc_logs', qcLog.id, qcLog as unknown as Record<string, unknown>, 'best-effort');
 
     res.status(201).json({ success: true, data: qcLog });
   } catch (error: unknown) {

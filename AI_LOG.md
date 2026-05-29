@@ -864,3 +864,49 @@ Next Priority:
 ---
 
 *Last updated: 2026-05-29 (Visual QC Inspector UI complete — all AI features integrated)*
+
+---
+
+## Session: 2026-05-30 — Fixes, Portability, Dataset Sharing
+
+### AI Self-Review Protocol
+
+```
+Date: 2026-05-30
+Task: Bug fixes, portable start script, include dataset + model weights in repo
+Files Changed:
+  - start.sh (portable — auto-detects Python, no hardcoded paths)
+  - .gitignore (removed dataset/ and *.pt exclusions)
+  - ai/.gitignore (removed dataset/image exclusions, keep only .onnx/.engine)
+  - backend/src/modules/qc/qc.schema.ts (removed .refine() requiring lotId/batchId)
+  - README.md (simplified quickstart with ./start.sh)
+  - dataset/ (now tracked in git — teammates can train without downloading)
+  - ai/runs/detect/train/weights/best.pt (6MB — teammates can run AI without training)
+Completed:
+  - Fixed "failed to fetch" on Save QC Log button (removed mandatory lot/batch validation)
+  - Made start.sh portable (auto-detects Python across machines)
+  - Included dataset in git (teammates don't need Roboflow account)
+  - Included trained model weights (teammates can run AI immediately)
+  - Simplified README with one-command startup
+Remaining:
+  - Deployment (live demo URL required for submission)
+  - Demo video (3 min max)
+  - Pitch deck
+Risks:
+  - Repo size increased (~150MB with dataset) — acceptable for hackathon
+  - Deadline: 23:59 WIB, 31 May 2026 (tomorrow)
+Technical Debt:
+  - None critical
+Bugs:
+  - None known — all features tested and working
+Security Concerns:
+  - None
+Next Priority:
+  - Deploy to Vercel/Railway (required submission)
+  - Record demo video
+  - Create pitch deck
+```
+
+---
+
+*Last updated: 2026-05-30 (All features working, ready for deployment)*

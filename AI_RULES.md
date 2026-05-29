@@ -437,8 +437,8 @@ Sebelum finalize, check:
 - ✅ No exposed secrets
 
 **Documentation**
-- ✅ README (basic)
-- ❌ Setup guide
+- ✅ README (complete with quickstart, API docs, credentials)
+- ✅ Setup guide (start.sh one-command startup)
 - ❌ Architecture docs
 - ❌ Security docs
 
