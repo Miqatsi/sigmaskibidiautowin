@@ -51,7 +51,7 @@ export default function LoginPage() {
 
     try {
       // Try backend first
-      const response = await api.post<{ success: boolean; data: AuthResponse }>(
+      const response = await api.post<{ success: boolean; data: AuthResponse; message?: string }>(
         '/auth/login',
         { username: login, password }
       );
@@ -61,15 +61,23 @@ export default function LoginPage() {
         router.push('/dashboard');
         return;
       }
-    } catch {
-      // Backend unreachable — fall back to demo login
-      const demoResult = demoLogin(login, password);
-      if (demoResult) {
-        setAuth(demoResult);
-        router.push('/dashboard');
-        return;
+
+      // Backend returned success:false
+      setError(response.message || 'Username atau password salah.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+
+      // Only fallback to demo if backend is unreachable (network error)
+      if (message.includes('Tidak dapat terhubung')) {
+        const demoResult = demoLogin(login, password);
+        if (demoResult) {
+          setAuth(demoResult);
+          router.push('/dashboard');
+          return;
+        }
       }
-      setError('Username atau password salah.');
+
+      setError(message || 'Username atau password salah.');
     } finally {
       setLoading(false);
     }

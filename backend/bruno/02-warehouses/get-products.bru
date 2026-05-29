@@ -1,0 +1,28 @@
+meta {
+  name: Get Products
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/warehouses/products
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data && data.data.length > 0) {
+    bru.setVar("productId", data.data[0].id);
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

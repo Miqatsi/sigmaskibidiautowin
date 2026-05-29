@@ -1,0 +1,34 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "admin",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  bru.setVar("token", data.data.token);
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("should return token", function() {
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.data.token).to.be.a("string");
+  });
+}

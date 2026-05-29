@@ -1,0 +1,31 @@
+meta {
+  name: Complete Batch
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/production/batches/{{batchId}}/status
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "status": "COMPLETED"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("status should be COMPLETED", function() {
+    const body = res.getBody();
+    expect(body.data.status).to.equal("COMPLETED");
+  });
+}

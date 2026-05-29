@@ -1,0 +1,38 @@
+meta {
+  name: Create Production Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/production/orders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "orderNumber": "PO-BRUNO-{{$timestamp}}",
+    "productId": "{{productId}}",
+    "quantity": 50,
+    "unit": "bottle",
+    "plannedDate": "2026-06-01T00:00:00.000Z"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data) {
+    bru.setVar("orderId", data.data.id);
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

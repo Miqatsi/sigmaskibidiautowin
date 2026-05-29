@@ -292,17 +292,47 @@ Sebelum finalize, check:
 
 ---
 
-### DAY 3 — Frontend & AI Integration
+### DAY 3 — Frontend & AI Integration (Competitive Advantage)
 
 **Frontend**
 - ✅ Dashboard layout
 - ✅ Navigation
 - ❌ Role-based views
 
-**AI**
-- ❌ AI endpoint
-- ❌ QC AI parsing
-- ❌ PPIC optimization
+**AI Manufacturing Copilot** (`POST /ai/copilot`)
+- ✅ Natural language question interface
+- ✅ QC failure explanation
+- ✅ Supplier performance analysis
+- ✅ Impact/recall analysis
+- ✅ Context gathering from all modules (lots, QC, production, inventory)
+- ✅ Mock AI provider (rule-based)
+- ❌ LLM integration (OpenAI/Anthropic — interface ready)
+- ✅ Frontend UI page (`/dashboard/ai`)
+
+**Predictive QC Risk Engine** (`POST /ai/qc-risk`)
+- ❌ Predict QC failure probability per lot
+- ❌ Supplier risk scoring (based on historical failure rate)
+- ❌ Storage risk scoring (based on expiry proximity)
+- ❌ Material risk scoring (based on material type history)
+- ❌ Prioritize lots for inspection (risk-ranked queue)
+- ❌ Risk score breakdown (contributors with percentages)
+
+  Example output:
+  ```
+  Lot RM-2026-005 Risk Score: 82%
+  Contributors:
+    Supplier history: +40%
+    Storage conditions: +25%
+    Material profile: +17%
+  ```
+
+**QC Computer Vision** (`POST /ai/qc-vision`)
+- ❌ Analyze incoming raw material images
+- ❌ Detect defects / contamination
+- ❌ Assess color consistency
+- ❌ Assess powder/liquid consistency
+- ❌ Technology: YOLO / OpenCV / FastAPI microservice
+- ❌ Integration with QC module (auto-attach results)
 
 **Reliability**
 - ✅ Timeout handling (rate limiting)
@@ -315,7 +345,12 @@ Sebelum finalize, check:
 - ✅ QC forms
 - ✅ Tables
 
-**Deliverables:** Dashboard ✅ | AI endpoint ❌ | Functional frontend ✅
+**Deliverables:**
+- ✅ Dashboard
+- ✅ AI Manufacturing Copilot (POST /ai/copilot)
+- ❌ Predictive QC Risk Engine
+- ❌ Computer Vision QC
+- ✅ Functional frontend
 
 **Enterprise Checks:**
 - ✅ Error handling (all endpoints)
@@ -324,7 +359,7 @@ Sebelum finalize, check:
 
 ---
 
-### DAY 4 — Dashboards & Workflow
+### DAY 4 — Dashboards, Workflow & Recall Simulator
 
 **Manufacturing Workflow**
 - ✅ Raw Material (receive lots)
@@ -332,9 +367,30 @@ Sebelum finalize, check:
 - ✅ Production (orders + batches + consume lots)
 - 🟡 Dispatch (schema exists, no dedicated module yet)
 
+**AI Recall Impact Simulator** (`GET /traceability/recall/:lotNumber`)
+- ❌ Simulate contamination events
+- ❌ Trace all affected lots (forward chain)
+- ❌ Trace all affected production batches
+- ❌ Trace all affected inventory movements
+- ❌ Trace all affected customers/dispatches
+- ❌ Risk level classification (LOW/MEDIUM/HIGH/CRITICAL)
+- ❌ Recall scope estimation (# products, # customers)
+
+  Example output:
+  ```
+  Input: RM-001 contaminated
+  Output:
+    Affected Batches: 5
+    Affected Products: 12
+    Affected Customers: 3
+    Risk Level: HIGH
+    Recommended Action: IMMEDIATE RECALL
+  ```
+
 **Interfaces**
-- ❌ QC approval page
+- ❌ QC approval page (dedicated)
 - ❌ PPIC scheduling board
+- ❌ Recall simulator UI
 
 **Tracking**
 - ✅ Lot traceability (forward + backward)
@@ -349,7 +405,10 @@ Sebelum finalize, check:
 **Testing**
 - ✅ End-to-end testing (full chain verified via script)
 
-**Deliverables:** Full MVP workflow (backend) ✅
+**Deliverables:**
+- ✅ Full MVP workflow (backend)
+- ❌ AI Recall Impact Simulator
+- ❌ PPIC scheduling board
 
 **Enterprise Checks:**
 - ✅ No dead ends (all status transitions validated)
@@ -434,9 +493,30 @@ Next Priority:
 3. Audit trail
 4. Authentication
 5. Core workflow (Lot → QC → Production → Inventory → Traceability)
-6. AI features
-7. UI polish
-8. Deployment
-9. Pitch
+6. **Swagger/OpenAPI documentation**
+7. **AI Manufacturing Copilot** (POST /ai/copilot) ✅
+8. **Predictive QC Risk Engine** (POST /ai/qc-risk)
+9. **AI Recall Impact Simulator** (GET /traceability/recall/:lotNumber)
+10. **YOLO Computer Vision QC** (POST /ai/qc-vision)
+11. Role-based frontend views
+12. Deployment (Vercel + Railway/Render)
+13. Pitch Deck & Demo Video
 
-**RULE: Never skip unfinished blockers. Never jump to lower priority if higher priority is incomplete.**
+**WHY THIS ORDER:**
+- YOLO alone = expected by every team
+- YOLO + Copilot + Risk Prediction + Recall Simulation = **memorable**
+- This combination directly addresses: QC bottleneck, production visibility, fragmented systems, traceability
+- Stronger innovation story for judging
+
+**PITCH POSITIONING:**
+Instead of: "AI-powered QC platform"
+Say: **"Enterprise Manufacturing Intelligence Platform"**
+
+Features for judges:
+1. AI Manufacturing Copilot — Understands and explains manufacturing operations
+2. Predictive QC Risk Engine — Predicts failures before inspection
+3. Recall Impact Simulator — Instantly identifies business impact of contamination
+4. End-to-End Lot Traceability — Complete genealogy from supplier to customer
+5. AI-Assisted Computer Vision QC — Automated inspection of raw materials
+
+**RULE: Never skip unfinished blockers. Never jump to lower priority if higher priority is incomplete.****RULE: Never skip unfinished blockers. Never jump to lower priority if higher priority is incomplete.**

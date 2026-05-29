@@ -1,0 +1,27 @@
+meta {
+  name: Trace Lot (Forward)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/traceability/{{lotNumber}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("should return traceability data", function() {
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.data.lotNumber).to.be.a("string");
+    expect(body.data.qcHistory).to.be.an("array");
+  });
+}

@@ -27,7 +27,7 @@ export default function DashboardPage() {
         api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/lots?limit=1'),
         api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/production/orders?limit=1'),
         api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/qc?limit=1'),
-        api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/inventory?limit=1'),
+        api.get<{ success: boolean; data: unknown[]; pagination?: { total: number } }>('/inventory/transactions?limit=1'),
       ]);
 
       setStats({

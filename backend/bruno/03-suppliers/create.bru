@@ -1,0 +1,40 @@
+meta {
+  name: Create Supplier
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/suppliers
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "Bruno Test Supplier",
+    "code": "SUP-{{$timestamp}}"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data) {
+    bru.setVar("supplierId", data.data.id);
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("should return supplier", function() {
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.data.id).to.be.a("string");
+  });
+}

@@ -12,6 +12,8 @@ import qcRoutes from './modules/qc/qc.routes';
 import productionRoutes from './modules/production/production.routes';
 import inventoryRoutes from './modules/inventory/inventory.routes';
 import traceabilityRoutes from './modules/traceability/traceability.routes';
+import warehouseRoutes from './modules/warehouse/warehouse.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const app = express();
 
@@ -23,14 +25,15 @@ app.use(cors({
 }));
 
 // Rate limiting
+const isDev = process.env.NODE_ENV === 'development';
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: isDev ? 1000 : 200,
   message: { success: false, message: 'Terlalu banyak request. Coba lagi nanti.' },
 });
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: isDev ? 100 : 20,
   message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi nanti.' },
 });
 
@@ -57,6 +60,8 @@ app.use('/qc', qcRoutes);
 app.use('/production', productionRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/traceability', traceabilityRoutes);
+app.use('/warehouses', warehouseRoutes);
+app.use('/ai', aiRoutes);
 
 // 404 handler
 app.use((_req, res) => {

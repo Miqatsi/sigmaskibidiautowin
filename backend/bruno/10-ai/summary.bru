@@ -1,0 +1,26 @@
+meta {
+  name: AI - Manufacturing Summary
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/ai/summary
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("should return health score", function() {
+    const body = res.getBody();
+    expect(body.data.healthScore).to.be.a("number");
+    expect(body.data.totalLots).to.be.a("number");
+  });
+}

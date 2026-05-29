@@ -49,7 +49,7 @@ export interface RawMaterialLot {
   unit: string;
   receivedAt: string;
   expiryDate?: string;
-  status: 'PENDING_QC' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING_QC' | 'APPROVED' | 'REJECTED' | 'CONSUMED';
   material?: RawMaterial;
   supplier?: Supplier;
   createdAt: string;
@@ -108,7 +108,7 @@ export interface ProductionBatch {
 
 export interface InventoryTransaction {
   id: string;
-  type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
+  type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT' | 'CONSUME' | 'SHIP';
   storageLocationId: string;
   batchId?: string;
   quantity: number;

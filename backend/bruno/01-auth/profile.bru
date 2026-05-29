@@ -1,0 +1,27 @@
+meta {
+  name: Get Profile
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/auth/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("should return user data", function() {
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.data.username).to.equal("admin");
+    expect(body.data.role).to.be.an("object");
+  });
+}

@@ -1,0 +1,39 @@
+meta {
+  name: Create Inventory Transaction
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/inventory/transactions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "type": "IN",
+    "storageLocationId": "{{storageLocationId}}",
+    "batchId": "{{batchId}}",
+    "quantity": 50,
+    "unit": "bottle",
+    "reference": "Bruno test - batch completed"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data) {
+    bru.setVar("transactionId", data.data.id);
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

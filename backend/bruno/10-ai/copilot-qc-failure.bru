@@ -1,0 +1,33 @@
+meta {
+  name: AI - QC Failure Analysis
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/ai/copilot
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "question": "Why did lot RM-E2E-001 fail QC?"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("should return analysis", function() {
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.data.summary).to.be.a("string");
+    expect(body.data.riskLevel).to.be.a("string");
+  });
+}

@@ -1,0 +1,32 @@
+meta {
+  name: AI - Impact Analysis
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/ai/copilot
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "question": "What customers are affected if RM-E2E-001 is contaminated?"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("should return affected batches", function() {
+    const body = res.getBody();
+    expect(body.data.affectedBatches).to.be.an("array");
+    expect(body.data.riskLevel).to.equal("HIGH");
+  });
+}

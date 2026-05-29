@@ -1,0 +1,45 @@
+meta {
+  name: Create Production Batch
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/production/batches
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "lotNumber": "FG-BRUNO-{{$timestamp}}",
+    "orderId": "{{orderId}}",
+    "quantity": 50,
+    "unit": "bottle",
+    "rawMaterialLotIds": [
+      {
+        "lotId": "{{lotId}}",
+        "quantityUsed": 80,
+        "unit": "kg"
+      }
+    ]
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data) {
+    bru.setVar("batchId", data.data.id);
+    bru.setVar("batchLotNumber", data.data.lotNumber);
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

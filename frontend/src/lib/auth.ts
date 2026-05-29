@@ -6,12 +6,31 @@ import { User, AuthResponse } from '@/types';
 
 export function setAuth(data: AuthResponse): void {
   localStorage.setItem('token', data.token);
-  // Backend returns role as string, normalize to object for frontend
+  // Backend returns role as string (role name) in login response
+  // Normalize to { id, name } object for frontend consistency
   const rawUser = data.user;
-  const role = typeof rawUser.role === 'string'
-    ? { id: rawUser.roleId || '', name: rawUser.role }
-    : rawUser.role;
-  const user = { ...rawUser, role };
+  let role: { id: string; name: string };
+
+  if (typeof rawUser.role === 'string') {
+    role = { id: '', name: rawUser.role };
+  } else if (rawUser.role && typeof rawUser.role === 'object') {
+    role = { id: rawUser.role.id || '', name: rawUser.role.name || '' };
+  } else {
+    role = { id: '', name: 'User' };
+  }
+
+  const user: User = {
+    id: rawUser.id,
+    username: rawUser.username,
+    email: rawUser.email,
+    fullName: rawUser.fullName,
+    isActive: rawUser.isActive ?? true,
+    roleId: role.id,
+    role,
+    createdAt: rawUser.createdAt || new Date().toISOString(),
+    updatedAt: rawUser.updatedAt || new Date().toISOString(),
+  };
+
   localStorage.setItem('user', JSON.stringify(user));
 }
 

@@ -1,0 +1,27 @@
+meta {
+  name: AI - Supplier Risk
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/ai/copilot
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "question": "Which supplier has the highest QC failure rate?"
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

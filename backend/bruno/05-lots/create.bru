@@ -1,0 +1,43 @@
+meta {
+  name: Create Lot
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/lots
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "lotNumber": "RM-BRUNO-{{$timestamp}}",
+    "materialId": "{{materialId}}",
+    "supplierId": "{{supplierId}}",
+    "quantity": 100,
+    "unit": "kg"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data) {
+    bru.setVar("lotId", data.data.id);
+    bru.setVar("lotNumber", data.data.lotNumber);
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("should have PENDING_QC status", function() {
+    const body = res.getBody();
+    expect(body.data.status).to.equal("PENDING_QC");
+  });
+}

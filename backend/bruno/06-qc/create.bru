@@ -1,0 +1,41 @@
+meta {
+  name: Create QC (PASS)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/qc
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "type": "INCOMING",
+    "result": "PASS",
+    "rawMaterialLotId": "{{lotId}}",
+    "notes": "Bruno test - visual inspection OK"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data) {
+    bru.setVar("qcId", data.data.id);
+  }
+}
+
+tests {
+  test("should return 201", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+  test("QC result should be PASS", function() {
+    const body = res.getBody();
+    expect(body.data.result).to.equal("PASS");
+  });
+}

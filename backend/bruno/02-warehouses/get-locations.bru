@@ -1,0 +1,28 @@
+meta {
+  name: Get Storage Locations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/warehouses/locations
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  const data = res.getBody();
+  if (data.data && data.data.length > 0) {
+    bru.setVar("storageLocationId", data.data[0].id);
+  }
+}
+
+tests {
+  test("should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
