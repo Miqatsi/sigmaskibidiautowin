@@ -62,10 +62,7 @@ yarn-error.log*
 *.tgz
 .cache/
 
-# AI/ML — Model weights only (dataset is shared via git)
-ai/runs/
-runs/
-*.pt
+# AI/ML — Only exclude ONNX/TensorRT engine files
 *.onnx
 *.engine
 *.tflite

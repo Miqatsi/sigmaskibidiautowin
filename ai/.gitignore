@@ -2,9 +2,7 @@
 # AI/ML .gitignore — Sima Arome QC Vision
 # ============================================================
 
-# Training outputs (model weights are large)
-runs/
-*.pt
+# Training outputs — keep best.pt for teammates
 *.onnx
 *.engine
 *.tflite
