@@ -27,6 +27,12 @@ interface SlotRec {
   alternatives: Array<{ location: string; score: number; reason: string }>;
 }
 
+interface HazardViolation {
+  lotNumber: string; material: string; currentLocation: string;
+  hazardClass: string; conflictWith: string; conflictHazardClass: string;
+  severity: string; description: string; recommendedAction: string; recommendedLocation: string;
+}
+
 function zoneColor(type: string): string {
   switch (type) {
     case 'COLD_STORAGE': return 'bg-blue-100 border-blue-400';
@@ -48,6 +54,7 @@ export default function WarehouseIntelligencePage() {
   const [zones, setZones] = useState<WarehouseZone[]>([]);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [slotRec, setSlotRec] = useState<SlotRec | null>(null);
+  const [hazardViolations, setHazardViolations] = useState<HazardViolation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,12 +63,14 @@ export default function WarehouseIntelligencePage() {
   async function loadData() {
     try {
       setLoading(true);
-      const [mapRes, healthRes] = await Promise.all([
+      const [mapRes, healthRes, hazardRes] = await Promise.all([
         api.get<{ success: boolean; data: WarehouseZone[] }>('/warehouses/intelligence/map'),
         api.get<{ success: boolean; data: HealthData }>('/warehouses/intelligence/health'),
+        api.get<{ success: boolean; data: HazardViolation[] }>('/warehouses/intelligence/hazard-violations'),
       ]);
       if (mapRes.success && mapRes.data) setZones(mapRes.data);
       if (healthRes.success && healthRes.data) setHealth(healthRes.data);
+      if (hazardRes.success && hazardRes.data) setHazardViolations(hazardRes.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load warehouse data.');
     } finally {
@@ -186,6 +195,28 @@ export default function WarehouseIntelligencePage() {
           ))}
         </div>
       </Card>
+
+      {/* Hazard Segregation Violations */}
+      {hazardViolations.length > 0 && (
+        <Card title="⚠️ Hazard Segregation Violations">
+          <div className="space-y-3">
+            {hazardViolations.slice(0, 5).map((v, i) => (
+              <div key={i} className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="danger">{v.severity}</Badge>
+                  <span className="text-sm font-medium text-gray-900">{v.lotNumber} — {v.material}</span>
+                </div>
+                <p className="text-xs text-gray-700">{v.description}</p>
+                <div className="flex items-center gap-4 mt-2 text-xs">
+                  <span className="text-red-700">❌ {v.hazardClass} vs {v.conflictHazardClass}</span>
+                  <span className="text-blue-700">💡 {v.recommendedAction}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {hazardViolations.length > 5 && <p className="text-xs text-gray-500 mt-2">+ {hazardViolations.length - 5} more violations</p>}
+        </Card>
+      )}
 
       {/* Smart Slot Recommendation */}
       {slotRec && (

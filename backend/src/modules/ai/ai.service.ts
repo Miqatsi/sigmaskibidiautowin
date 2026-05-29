@@ -121,6 +121,9 @@ function detectIntent(question: string, entity: ExtractedEntity): CopilotIntent 
   if (q.includes('expir') || q.includes('vulnerable') || q.includes('quarantine')) return 'INVENTORY_ANALYTICS';
   if (q.includes('inventory') && (q.includes('which') || q.includes('health'))) return 'INVENTORY_ANALYTICS';
 
+  // Warehouse questions → route to inventory analytics (reuse)
+  if (q.includes('warehouse') || q.includes('cold chain') || q.includes('storage') || q.includes('slot') || q.includes('hazard') || q.includes('segregat')) return 'INVENTORY_ANALYTICS';
+
   // Standard keyword-based
   if (q.includes('supplier') && q.includes('risk')) return 'SUPPLIER_RISK';
   if (q.includes('qc') || q.includes('fail') || q.includes('quality') || q.includes('reject')) return 'QC_ANALYSIS';

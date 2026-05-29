@@ -4,7 +4,7 @@ import { authorize } from '../../middleware/authorize';
 import { prisma } from '../../lib/prisma';
 import { AuthenticatedRequest } from '../../types/express';
 import logger from '../../lib/logger';
-import { getWarehouseMap, recommendSlot, getColdChainStatus, getWarehouseHealth } from './warehouse-intelligence.service';
+import { getWarehouseMap, recommendSlot, getColdChainStatus, getWarehouseHealth, getHazardViolations, getHazardMatrix } from './warehouse-intelligence.service';
 
 const router = Router();
 
@@ -119,5 +119,32 @@ router.get('/intelligence/recommend-slot', authorize('Admin', 'Warehouse', 'Mana
   } catch (error) {
     logger.error({ err: error }, '[Warehouse/RecommendSlot]');
     res.status(500).json({ success: false, message: 'Gagal menghasilkan rekomendasi slot.' });
+  }
+});
+
+
+/**
+ * GET /warehouses/intelligence/hazard-violations — Detect hazard segregation violations
+ */
+router.get('/intelligence/hazard-violations', authorize('Admin', 'Warehouse', 'Manager', 'QC'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const data = await getHazardViolations();
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    logger.error({ err: error }, '[Warehouse/HazardViolations]');
+    res.status(500).json({ success: false, message: 'Gagal mendeteksi hazard violations.' });
+  }
+});
+
+/**
+ * GET /warehouses/intelligence/hazard-matrix — Hazard compatibility matrix
+ */
+router.get('/intelligence/hazard-matrix', authorize('Admin', 'Warehouse', 'Manager', 'QC'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const data = getHazardMatrix();
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    logger.error({ err: error }, '[Warehouse/HazardMatrix]');
+    res.status(500).json({ success: false, message: 'Gagal mengambil hazard matrix.' });
   }
 });

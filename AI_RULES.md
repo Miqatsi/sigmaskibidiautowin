@@ -296,66 +296,38 @@ Sebelum finalize, check:
 
 **Frontend**
 - ✅ Dashboard layout
-- ✅ Navigation
-- ❌ Role-based views
+- ✅ Navigation (sectioned: Intelligence, Operations, Master Data, Analytics)
+- ✅ Role-based views (RBAC on all endpoints)
 
 **AI Manufacturing Copilot** (`POST /ai/copilot`)
 - ✅ Natural language question interface
-- ✅ QC failure explanation
-- ✅ Supplier performance analysis
-- ✅ Impact/recall analysis
-- ✅ Context gathering from all modules (lots, QC, production, inventory)
-- ✅ Mock AI provider (rule-based)
-- ❌ LLM integration (OpenAI/Anthropic — interface ready)
-- ✅ Frontend UI page (`/dashboard/ai`)
+- ✅ Entity-aware (validates supplier/lot exists before answering)
+- ✅ 10 intents: SUPPLIER_RISK, SUPPLIER_ANALYTICS, QC_ANALYSIS, QC_ANALYTICS, INVENTORY_RISK, INVENTORY_ANALYTICS, PRODUCTION_ANALYSIS, PRODUCTION_ANALYTICS, RISK_ANALYTICS, TRACEABILITY
+- ✅ Context retrieval services (supplier, QC, inventory, production, analytics)
+- ✅ Evidence-based responses with confidence scores
+- ✅ Data Quality Engine (LOW/MEDIUM/HIGH)
+- ✅ Business Impact + Risk Contributors in every response
+- ✅ Mock AI provider (LLM-ready interface)
+- ✅ Frontend: /dashboard/ai + /dashboard/intelligence
 
-**Predictive QC Risk Engine** (`POST /ai/qc-risk`)
-- ❌ Predict QC failure probability per lot
-- ❌ Supplier risk scoring (based on historical failure rate)
-- ❌ Storage risk scoring (based on expiry proximity)
-- ❌ Material risk scoring (based on material type history)
-- ❌ Prioritize lots for inspection (risk-ranked queue)
-- ❌ Risk score breakdown (contributors with percentages)
+**QC Computer Vision** (`POST /predict, /analyze-powder, /full-inspect`)
+- ✅ YOLOv8 trained model (best.pt)
+- ✅ Defect detection (fresh vs rotten)
+- ✅ Colour consistency analysis (HSV)
+- ✅ Powder QC (contamination + uniformity)
+- ✅ Frontend: /dashboard/visual-qc
 
-  Example output:
-  ```
-  Lot RM-2026-005 Risk Score: 82%
-  Contributors:
-    Supplier history: +40%
-    Storage conditions: +25%
-    Material profile: +17%
-  ```
-
-**QC Computer Vision** (`POST /ai/qc-vision`)
-- ✅ Analyze incoming raw material images
-- ✅ Detect defects / contamination (fresh vs rotten classification)
-- ✅ Assess color consistency (OpenCV HSV analysis)
-- ✅ Assess powder/liquid consistency (POST /analyze-powder — HSV variance + spatial uniformity + outlier detection)
-- ✅ Technology: YOLO + OpenCV / FastAPI microservice
-- ✅ Integration with QC module (Visual QC Inspector UI + lot/batch selector + save to QC log)
-
-**Reliability**
-- ✅ Timeout handling (rate limiting)
-- ✅ Error fallback (try-catch on all endpoints)
-- ✅ Logging (Pino structured logging)
-
-**Integration**
-- ✅ Connect frontend → backend
-- ✅ Lot tracking UI
-- ✅ QC forms
-- ✅ Tables
+**PPIC Scheduling** (Python OR-Tools)
+- ✅ Production scheduling optimization
+- ✅ Frontend: /dashboard/ppic
 
 **Deliverables:**
 - ✅ Dashboard
-- ✅ AI Manufacturing Copilot (POST /ai/copilot)
-- ❌ Predictive QC Risk Engine
+- ✅ AI Manufacturing Copilot
 - ✅ Computer Vision QC
-- ✅ Functional frontend
-
-**Enterprise Checks:**
-- ✅ Error handling (all endpoints)
-- ✅ Loading states
-- ❌ Accessibility
+- ✅ PPIC Scheduling
+- ✅ Manufacturing Intelligence Center
+- ✅ Functional frontend (18 pages)
 
 ---
 
@@ -368,13 +340,43 @@ Sebelum finalize, check:
 - 🟡 Dispatch (schema exists, no dedicated module yet)
 
 **AI Recall Impact Simulator** (`GET /traceability/recall/:lotNumber`)
-- ❌ Simulate contamination events
-- ❌ Trace all affected lots (forward chain)
-- ❌ Trace all affected production batches
-- ❌ Trace all affected inventory movements
-- ❌ Trace all affected customers/dispatches
-- ❌ Risk level classification (LOW/MEDIUM/HIGH/CRITICAL)
-- ❌ Recall scope estimation (# products, # customers)
+- ✅ Simulate contamination events
+- ✅ Trace all affected production batches
+- ✅ Trace all affected inventory movements
+- ✅ Risk scoring engine (+40/+30/+20/+30)
+- ✅ Risk level classification (LOW/MEDIUM/HIGH/CRITICAL)
+- ✅ Dynamic recommendation engine
+- ✅ Graph endpoint (nodes + edges for ReactFlow)
+- ✅ Audit logging (strict)
+- ✅ Frontend: /dashboard/recall with searchable lot dropdown
+
+**Operational Alert Center** (`GET /alerts`)
+- ✅ 6 alert types (QC_FAILURE, SUPPLIER_RISK, EXPIRY, PRODUCTION_BLOCKER, RECALL_EXPOSURE, INVENTORY_HEALTH)
+- ✅ Severity scoring + business impact
+- ✅ Frontend: /dashboard/alerts
+
+**Manufacturing Intelligence Report** (`POST /ai/report`)
+- ✅ Plant Health Score (0-100)
+- ✅ Executive overview + risks + recommendations
+- ✅ Copy + Download JSON
+- ✅ Accessible from Intelligence Center
+
+**Warehouse Intelligence** (`/warehouses/intelligence/*`)
+- ✅ Floor map (zones, temperature, capacity)
+- ✅ Smart slot recommendation (confidence + reasoning)
+- ✅ Cold chain monitoring (simulated IoT)
+- ✅ Hazard segregation engine (incompatibility matrix)
+- ✅ Hazard violation detection
+- ✅ Warehouse health score (0-100)
+- ✅ Warehouse copilot integration
+- ✅ Frontend: /dashboard/warehouse-intelligence
+
+**Deliverables:**
+- ✅ Full MVP workflow
+- ✅ Recall Impact Simulator
+- ✅ Alert Center
+- ✅ Intelligence Report
+- ✅ Warehouse Intelligence
 
   Example output:
   ```
@@ -487,37 +489,25 @@ Next Priority:
 
 ---
 
-### Priority Order (Always Follow This)
+### Priority Order (Current Status)
 
-1. Blocking issues
-2. Security
-3. Audit trail
-4. Authentication
-5. Core workflow (Lot → QC → Production → Inventory → Traceability)
-6. **Swagger/OpenAPI documentation**
-7. **AI Manufacturing Copilot** (POST /ai/copilot) ✅
-8. **Predictive QC Risk Engine** (POST /ai/qc-risk)
-9. **AI Recall Impact Simulator** (GET /traceability/recall/:lotNumber)
-10. **YOLO Computer Vision QC** (POST /ai/qc-vision)
-11. Role-based frontend views
-12. Deployment (Vercel + Railway/Render)
-13. Pitch Deck & Demo Video
+1. ✅ Blocking issues — none
+2. ✅ Security — Helmet, CORS, rate limiting, Zod, bcrypt
+3. ✅ Audit trail — strict/best-effort policy
+4. ✅ Authentication — JWT + RBAC (5 roles)
+5. ✅ Core workflow — Lot → QC → Production → Inventory → Traceability
+6. ❌ Swagger/OpenAPI documentation
+7. ✅ **AI Manufacturing Copilot** (entity-aware, analytics, evidence-based)
+8. ✅ **Recall Impact Simulator** (risk scoring + graph)
+9. ✅ **Warehouse Intelligence** (cold chain, hazard, smart slotting)
+10. ✅ **QC Computer Vision** (YOLO + colour + powder)
+11. ✅ **PPIC Scheduling** (OR-Tools)
+12. ❌ Deployment (Vercel + Railway/Render)
+13. ❌ Pitch Deck & Demo Video
 
-**WHY THIS ORDER:**
-- YOLO alone = expected by every team
-- YOLO + Copilot + Risk Prediction + Recall Simulation = **memorable**
-- This combination directly addresses: QC bottleneck, production visibility, fragmented systems, traceability
-- Stronger innovation story for judging
-
-**PITCH POSITIONING:**
-Instead of: "AI-powered QC platform"
-Say: **"Enterprise Manufacturing Intelligence Platform"**
-
-Features for judges:
-1. AI Manufacturing Copilot — Understands and explains manufacturing operations
-2. Predictive QC Risk Engine — Predicts failures before inspection
-3. Recall Impact Simulator — Instantly identifies business impact of contamination
-4. End-to-End Lot Traceability — Complete genealogy from supplier to customer
-5. AI-Assisted Computer Vision QC — Automated inspection of raw materials
+**REMAINING PRIORITIES:**
+1. Deployment (live demo for judges)
+2. Swagger/OpenAPI docs
+3. Pitch deck + demo video
 
 **RULE: Never skip unfinished blockers. Never jump to lower priority if higher priority is incomplete.****RULE: Never skip unfinished blockers. Never jump to lower priority if higher priority is incomplete.**

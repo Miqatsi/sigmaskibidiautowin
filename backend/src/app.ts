@@ -3,6 +3,8 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 import { requestLogger } from './middleware/requestLogger';
 import authRoutes from './modules/auth/auth.routes';
 import supplierRoutes from './modules/supplier/supplier.routes';
@@ -49,8 +51,14 @@ app.use(requestLogger);
 
 // Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
 });
+
+// Swagger API Docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Sima Arome API Docs',
+}));
 
 // Routes
 app.use('/auth', authLimiter, authRoutes);

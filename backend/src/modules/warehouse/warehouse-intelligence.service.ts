@@ -233,3 +233,157 @@ export async function getWarehouseHealth(): Promise<WarehouseHealth> {
     alerts: coldAlerts,
   };
 }
+
+
+// ============================================================
+// HAZARD SEGREGATION ENGINE
+// ============================================================
+
+export type HazardClass = 'FLAMMABLE' | 'OXIDIZER' | 'CORROSIVE_ACID' | 'CORROSIVE_BASE' | 'FOOD_GRADE' | 'TOXIC' | 'GENERAL';
+
+export interface HazardViolation {
+  lotNumber: string;
+  material: string;
+  currentLocation: string;
+  hazardClass: HazardClass;
+  conflictWith: string;
+  conflictHazardClass: HazardClass;
+  severity: 'HIGH' | 'CRITICAL';
+  description: string;
+  recommendedAction: string;
+  recommendedLocation: string;
+}
+
+// Incompatibility matrix
+const HAZARD_INCOMPATIBLE: Record<string, string[]> = {
+  FLAMMABLE: ['OXIDIZER', 'CORROSIVE_ACID'],
+  OXIDIZER: ['FLAMMABLE', 'CORROSIVE_BASE'],
+  CORROSIVE_ACID: ['CORROSIVE_BASE', 'FLAMMABLE'],
+  CORROSIVE_BASE: ['CORROSIVE_ACID', 'OXIDIZER'],
+  FOOD_GRADE: ['TOXIC', 'CORROSIVE_ACID', 'CORROSIVE_BASE'],
+  TOXIC: ['FOOD_GRADE'],
+};
+
+// Assign hazard class based on material name (simulated)
+function classifyMaterial(materialName: string): HazardClass {
+  const name = materialName.toLowerCase();
+  if (name.includes('ethanol') || name.includes('alcohol') || name.includes('solvent')) return 'FLAMMABLE';
+  if (name.includes('peroxide') || name.includes('oxidiz')) return 'OXIDIZER';
+  if (name.includes('acid') || name.includes('citric')) return 'CORROSIVE_ACID';
+  if (name.includes('base') || name.includes('sodium') || name.includes('alkali')) return 'CORROSIVE_BASE';
+  if (name.includes('extract') || name.includes('oil') || name.includes('vanilla') || name.includes('coffee') || name.includes('ginger')) return 'FOOD_GRADE';
+  if (name.includes('toxic') || name.includes('pesticide')) return 'TOXIC';
+  return 'GENERAL';
+}
+
+/**
+ * Scan warehouse for hazard segregation violations.
+ * Checks if incompatible materials are stored in the same or adjacent zones.
+ */
+export async function getHazardViolations(): Promise<HazardViolation[]> {
+  const violations: HazardViolation[] = [];
+
+  // Get all lots with their storage info via inventory transactions
+  const lots = await prisma.rawMaterialLot.findMany({
+    where: { deletedAt: null, status: { in: ['APPROVED', 'PENDING_QC'] } },
+    include: { material: { select: { name: true } } },
+  });
+
+  // Get inventory to determine current locations
+  const transactions = await prisma.inventoryTransaction.findMany({
+    where: { deletedAt: null, type: 'IN' },
+    include: {
+      storageLocation: { select: { id: true, name: true, code: true } },
+      batch: {
+        select: {
+          rawMaterials: { include: { rawMaterialLot: { select: { lotNumber: true, material: { select: { name: true } } } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Build location → materials map
+  const locationMaterials: Map<string, Array<{ lotNumber: string; material: string; hazardClass: HazardClass }>> = new Map();
+
+  for (const tx of transactions) {
+    const locName = tx.storageLocation.name;
+    if (!locationMaterials.has(locName)) locationMaterials.set(locName, []);
+
+    if (tx.batch?.rawMaterials) {
+      for (const rm of tx.batch.rawMaterials) {
+        const matName = rm.rawMaterialLot.material.name;
+        locationMaterials.get(locName)!.push({
+          lotNumber: rm.rawMaterialLot.lotNumber,
+          material: matName,
+          hazardClass: classifyMaterial(matName),
+        });
+      }
+    }
+  }
+
+  // Also add lots directly (simulated placement)
+  const locations = await prisma.storageLocation.findMany({ where: { deletedAt: null }, select: { name: true } });
+  for (let i = 0; i < lots.length; i++) {
+    const loc = locations[i % locations.length];
+    if (!locationMaterials.has(loc.name)) locationMaterials.set(loc.name, []);
+    locationMaterials.get(loc.name)!.push({
+      lotNumber: lots[i].lotNumber,
+      material: lots[i].material.name,
+      hazardClass: classifyMaterial(lots[i].material.name),
+    });
+  }
+
+  // Check for violations within each location
+  for (const [location, materials] of locationMaterials) {
+    for (let i = 0; i < materials.length; i++) {
+      const mat = materials[i];
+      const incompatible = HAZARD_INCOMPATIBLE[mat.hazardClass] || [];
+
+      for (let j = i + 1; j < materials.length; j++) {
+        const other = materials[j];
+        if (incompatible.includes(other.hazardClass)) {
+          violations.push({
+            lotNumber: mat.lotNumber,
+            material: mat.material,
+            currentLocation: location,
+            hazardClass: mat.hazardClass,
+            conflictWith: `${other.material} (${other.lotNumber})`,
+            conflictHazardClass: other.hazardClass,
+            severity: mat.hazardClass === 'FLAMMABLE' || other.hazardClass === 'FLAMMABLE' ? 'CRITICAL' : 'HIGH',
+            description: `${mat.hazardClass} material "${mat.material}" stored with incompatible ${other.hazardClass} material "${other.material}" in ${location}`,
+            recommendedAction: `Relocate ${mat.lotNumber} to a ${mat.hazardClass}-compatible zone`,
+            recommendedLocation: mat.hazardClass === 'FLAMMABLE' ? 'Hazardous Storage Zone' : 'Quarantine Zone',
+          });
+        }
+      }
+    }
+  }
+
+  // Deduplicate (same pair only once)
+  const seen = new Set<string>();
+  return violations.filter(v => {
+    const key = [v.lotNumber, v.conflictWith].sort().join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 10); // Top 10 violations
+}
+
+/**
+ * Get hazard compatibility matrix for display.
+ */
+export function getHazardMatrix(): Array<{ class1: string; class2: string; compatible: boolean }> {
+  const classes: HazardClass[] = ['FLAMMABLE', 'OXIDIZER', 'CORROSIVE_ACID', 'CORROSIVE_BASE', 'FOOD_GRADE', 'TOXIC'];
+  const matrix: Array<{ class1: string; class2: string; compatible: boolean }> = [];
+
+  for (const c1 of classes) {
+    for (const c2 of classes) {
+      if (c1 === c2) continue;
+      const incompatible = HAZARD_INCOMPATIBLE[c1] || [];
+      matrix.push({ class1: c1, class2: c2, compatible: !incompatible.includes(c2) });
+    }
+  }
+
+  return matrix;
+}

@@ -58,6 +58,22 @@ export default function TraceabilityPage() {
   const [result, setResult] = useState<TraceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lots, setLots] = useState<Array<{ lotNumber: string; material: string; status: string }>>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  React.useEffect(() => {
+    api.get<{ success: boolean; data: Array<{ lotNumber: string; material?: { name: string }; status: string }> }>('/lots?limit=200')
+      .then(res => {
+        if (res.success && res.data) {
+          setLots(res.data.map(l => ({ lotNumber: l.lotNumber, material: l.material?.name || '', status: l.status })));
+        }
+      }).catch(() => {});
+  }, []);
+
+  const filteredLots = lots.filter(l =>
+    l.lotNumber.toLowerCase().includes(lotNumber.toLowerCase()) ||
+    l.material.toLowerCase().includes(lotNumber.toLowerCase())
+  ).slice(0, 10);
 
   async function handleTrace(e: React.FormEvent) {
     e.preventDefault();
@@ -93,14 +109,33 @@ export default function TraceabilityPage() {
       {/* Search */}
       <Card>
         <form onSubmit={handleTrace} className="flex items-end gap-4">
-          <div className="flex-1">
-            <Input
+          <div className="flex-1 relative">
+            <label htmlFor="lotNumber" className="block text-sm font-medium text-gray-700 mb-1">Lot Number</label>
+            <input
               id="lotNumber"
-              label="Lot Number"
-              placeholder="Masukkan nomor lot (e.g. LOT-RM-001)"
               value={lotNumber}
-              onChange={(e) => setLotNumber(e.target.value)}
+              onChange={(e) => { setLotNumber(e.target.value); setShowDropdown(true); }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search or select lot number..."
+              autoComplete="off"
             />
+            {showDropdown && filteredLots.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredLots.map((l) => (
+                  <button
+                    key={l.lotNumber}
+                    type="button"
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center justify-between"
+                    onMouseDown={() => { setLotNumber(l.lotNumber); setShowDropdown(false); }}
+                  >
+                    <span className="font-mono text-sm font-medium">{l.lotNumber}</span>
+                    <span className="text-xs text-gray-500">{l.material} • {l.status}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <Button type="submit" loading={loading} size="md">
             🔍 Trace
