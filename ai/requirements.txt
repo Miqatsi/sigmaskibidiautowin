@@ -1,0 +1,18 @@
+# Sima Arome — AI QC Dependencies
+# Install: pip install -r requirements.txt
+
+# Core ML
+ultralytics==8.3.145
+torch>=2.0.0
+torchvision>=0.15.0
+
+# API Server
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# Image processing
+Pillow>=10.0.0
+
+# Utilities
+numpy>=1.24.0

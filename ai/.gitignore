@@ -1,0 +1,46 @@
+# ============================================================
+# AI/ML .gitignore — Sima Arome QC Vision
+# ============================================================
+
+# Dataset images (large files, train locally)
+datasets/
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.bmp
+*.tiff
+
+# Training outputs (model weights are large)
+runs/
+*.pt
+*.onnx
+*.engine
+*.tflite
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

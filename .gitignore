@@ -61,3 +61,13 @@ yarn-error.log*
 # Misc
 *.tgz
 .cache/
+
+# AI/ML — Dataset images and model weights (train locally)
+ai/datasets/
+ai/runs/
+dataset/
+runs/
+*.pt
+*.onnx
+*.engine
+*.tflite
