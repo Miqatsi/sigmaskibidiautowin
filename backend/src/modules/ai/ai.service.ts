@@ -1,151 +1,192 @@
 import { prisma } from '../../lib/prisma';
-import { AIAnalysisResult } from './ai.schema';
+import { AIAnalysisResult, CopilotIntent, ManufacturingContext } from './ai.schema';
 import { getAIProvider } from './providers';
+import { getSupplierContext } from './context/supplier.context';
+import { getQCContext } from './context/qc.context';
+import { getInventoryContext } from './context/inventory.context';
+import { getProductionContext } from './context/production.context';
 
-/**
- * Gather manufacturing context relevant to the user's question.
- * Pulls data from lots, QC, production, inventory, suppliers.
- */
-async function gatherContext(question: string): Promise<string> {
-  const lowerQ = question.toLowerCase();
-  const contextParts: string[] = [];
+// ============================================================
+// ENTITY EXTRACTION
+// ============================================================
 
-  // Extract lot number from question if present
-  const lotMatch = question.match(/[A-Z]{2,}-[\w-]+/i);
-  const lotNumber = lotMatch ? lotMatch[0] : null;
-
-  // 1. Lot-specific context
-  if (lotNumber) {
-    const lot = await prisma.rawMaterialLot.findFirst({
-      where: { lotNumber: { contains: lotNumber, mode: 'insensitive' } },
-      include: {
-        material: { select: { name: true, code: true } },
-        supplier: { select: { name: true, code: true } },
-        qcLogs: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 5 },
-        productionBatchLots: {
-          include: { batch: { select: { lotNumber: true, status: true } } },
-        },
-      },
-    });
-
-    if (lot) {
-      contextParts.push(`LOT: ${lot.lotNumber}`);
-      contextParts.push(`material: "${lot.material.name}" (${lot.material.code})`);
-      contextParts.push(`supplier: "${lot.supplier.name}" (${lot.supplier.code})`);
-      contextParts.push(`status: ${lot.status}`);
-      contextParts.push(`quantity: ${lot.quantity} ${lot.unit}`);
-      contextParts.push(`received: ${lot.receivedAt.toISOString()}`);
-
-      if (lot.qcLogs.length > 0) {
-        contextParts.push(`QC_HISTORY:`);
-        lot.qcLogs.forEach(qc => {
-          contextParts.push(`  - ${qc.type}: ${qc.result} (${qc.createdAt.toISOString()}) ${qc.notes || ''}`);
-        });
-      }
-
-      if (lot.productionBatchLots.length > 0) {
-        contextParts.push(`USED_IN_BATCHES:`);
-        lot.productionBatchLots.forEach(pbl => {
-          contextParts.push(`  - ${pbl.batch.lotNumber} (${pbl.batch.status})`);
-        });
-      }
-    }
-  }
-
-  // 2. Supplier risk context (if question is about suppliers)
-  if (lowerQ.includes('supplier') || lowerQ.includes('rate') || lowerQ.includes('risk')) {
-    const suppliers = await prisma.supplier.findMany({
-      where: { deletedAt: null },
-      include: {
-        rawMaterialLots: {
-          where: { deletedAt: null },
-          include: { qcLogs: { where: { deletedAt: null } } },
-        },
-      },
-    });
-
-    contextParts.push(`SUPPLIER_STATS:`);
-    for (const sup of suppliers) {
-      const totalQC = sup.rawMaterialLots.reduce((sum, lot) => sum + lot.qcLogs.length, 0);
-      const failedQC = sup.rawMaterialLots.reduce(
-        (sum, lot) => sum + lot.qcLogs.filter(qc => qc.result === 'FAIL').length, 0
-      );
-      const rate = totalQC > 0 ? (failedQC / totalQC) * 100 : 0;
-      contextParts.push(`${sup.name}|${rate.toFixed(1)}|${totalQC}`);
-    }
-    contextParts.push(`END_STATS`);
-  }
-
-  // 3. Recent QC failures (general context)
-  if (lowerQ.includes('fail') || lowerQ.includes('qc') || lowerQ.includes('quality')) {
-    const recentFailures = await prisma.qCLog.findMany({
-      where: { result: 'FAIL', deletedAt: null },
-      include: {
-        rawMaterialLot: { select: { lotNumber: true, supplier: { select: { name: true } } } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
-
-    if (recentFailures.length > 0) {
-      contextParts.push(`RECENT_FAILURES (${recentFailures.length}):`);
-      recentFailures.forEach(f => {
-        contextParts.push(`  - Lot: ${f.rawMaterialLot?.lotNumber || 'N/A'}, Supplier: ${f.rawMaterialLot?.supplier?.name || 'N/A'}, Date: ${f.createdAt.toISOString()}`);
-      });
-    }
-  }
-
-  // 4. Inventory context (if about impact/affected)
-  if (lowerQ.includes('affected') || lowerQ.includes('inventory') || lowerQ.includes('dispatch')) {
-    const recentInventory = await prisma.inventoryTransaction.findMany({
-      where: { deletedAt: null },
-      include: {
-        batch: { select: { lotNumber: true } },
-        storageLocation: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
-
-    if (recentInventory.length > 0) {
-      contextParts.push(`RECENT_INVENTORY (${recentInventory.length}):`);
-      recentInventory.forEach(tx => {
-        contextParts.push(`  - ${tx.type}: ${tx.quantity} ${tx.unit} @ ${tx.storageLocation.name} (batch: ${tx.batch?.lotNumber || 'N/A'})`);
-      });
-    }
-  }
-
-  // 5. Production overview
-  if (lowerQ.includes('production') || lowerQ.includes('batch') || lowerQ.includes('order')) {
-    const activeOrders = await prisma.productionOrder.findMany({
-      where: { status: 'IN_PROGRESS', deletedAt: null },
-      include: { product: { select: { name: true } } },
-      take: 10,
-    });
-
-    if (activeOrders.length > 0) {
-      contextParts.push(`ACTIVE_PRODUCTION (${activeOrders.length}):`);
-      activeOrders.forEach(o => {
-        contextParts.push(`  - ${o.orderNumber}: ${o.product.name} (${o.quantity} ${o.unit})`);
-      });
-    }
-  }
-
-  return contextParts.join('\n');
+interface ExtractedEntity {
+  type: 'SUPPLIER' | 'LOT' | 'NONE';
+  name: string | null;
+  validated: boolean;
+  dbId: string | null;
 }
 
 /**
- * Main AI Copilot service — gathers context and generates analysis.
+ * Extract and validate entity from question.
+ * Checks database to confirm entity exists.
+ */
+async function extractEntity(question: string): Promise<ExtractedEntity> {
+  // 1. Try to extract lot number (pattern: XX-XXXX-XXX)
+  const lotMatch = question.match(/\b([A-Z]{2,}-[\w-]+)\b/i);
+  if (lotMatch) {
+    const lotNumber = lotMatch[1];
+    const lot = await prisma.rawMaterialLot.findFirst({
+      where: { lotNumber: { equals: lotNumber, mode: 'insensitive' }, deletedAt: null },
+      select: { id: true, lotNumber: true },
+    });
+    if (lot) {
+      return { type: 'LOT', name: lot.lotNumber, validated: true, dbId: lot.id };
+    }
+    // Also check production batches
+    const batch = await prisma.productionBatch.findFirst({
+      where: { lotNumber: { equals: lotNumber, mode: 'insensitive' }, deletedAt: null },
+      select: { id: true, lotNumber: true },
+    });
+    if (batch) {
+      return { type: 'LOT', name: batch.lotNumber, validated: true, dbId: batch.id };
+    }
+    // Lot pattern found but doesn't exist in DB
+    return { type: 'LOT', name: lotNumber, validated: false, dbId: null };
+  }
+
+  // 2. Try to extract supplier name (PT ..., CV ..., or quoted name)
+  const supplierPatterns = [
+    /["']([^"']+)["']/,                                    // "PT Bahan Murah Jaya"
+    /\b(PT\s+[A-Za-z\s]+?)(?:\s+(?:risky|risk|bad|worst|fail|perform|has|is)|[?.,]|$)/i,  // PT Bahan Murah Jaya risky
+    /\b(CV\s+[A-Za-z\s]+?)(?:\s+(?:risky|risk|bad|worst|fail|perform|has|is)|[?.,]|$)/i,  // CV Sedang Saja
+    /(?:supplier|vendor)\s+(.+?)(?:\s+(?:risky|risk|has|is)|[?.,]|$)/i,  // supplier XYZ risky
+    /(?:is|about)\s+(.+?)\s+(?:risky|risk|bad|worst|perform)/i,  // is XYZ risky
+    /(?:why|how)\s+(?:is|does)\s+(.+?)\s+(?:risky|risk|bad|fail|have)/i,  // why is XYZ risky
+  ];
+
+  for (const pattern of supplierPatterns) {
+    const match = question.match(pattern);
+    if (match && match[1].trim().length > 3) {
+      const candidateName = match[1].trim();
+      // Skip common false positives
+      if (['the supplier', 'this supplier', 'a supplier', 'which supplier', 'what supplier'].includes(candidateName.toLowerCase())) continue;
+
+      // Validate against database
+      const supplier = await prisma.supplier.findFirst({
+        where: { name: { contains: candidateName, mode: 'insensitive' }, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (supplier) {
+        return { type: 'SUPPLIER', name: supplier.name, validated: true, dbId: supplier.id };
+      }
+
+      // Entity mentioned but not found in DB
+      return { type: 'SUPPLIER', name: candidateName, validated: false, dbId: null };
+    }
+  }
+
+  return { type: 'NONE', name: null, validated: false, dbId: null };
+}
+
+// ============================================================
+// INTENT DETECTION
+// ============================================================
+
+function detectIntent(question: string, entity: ExtractedEntity): CopilotIntent {
+  const q = question.toLowerCase();
+
+  // Entity-based intent detection
+  if (entity.type === 'SUPPLIER') return 'SUPPLIER_RISK';
+  if (entity.type === 'LOT' && (q.includes('fail') || q.includes('qc') || q.includes('reject') || q.includes('gagal'))) return 'QC_ANALYSIS';
+  if (entity.type === 'LOT' && (q.includes('trace') || q.includes('contaminated') || q.includes('recall') || q.includes('impact'))) return 'TRACEABILITY';
+  if (entity.type === 'LOT') return 'QC_ANALYSIS'; // Default for lot references
+
+  // Keyword-based intent detection
+  if (q.includes('supplier') && (q.includes('risk') || q.includes('rate') || q.includes('worst') || q.includes('best') || q.includes('perform') || q.includes('risky'))) return 'SUPPLIER_RISK';
+  if (q.includes('qc') || q.includes('fail') || q.includes('inspect') || q.includes('quality') || q.includes('gagal') || q.includes('reject')) return 'QC_ANALYSIS';
+  if (q.includes('inventory') || q.includes('warehouse') || q.includes('stock') || q.includes('vulnerable') || q.includes('quarantine') || q.includes('storage') || q.includes('expir')) return 'INVENTORY_RISK';
+  if (q.includes('production') || q.includes('order') || q.includes('batch') || q.includes('blocked') || q.includes('delay') || q.includes('schedule')) return 'PRODUCTION_ANALYSIS';
+  if (q.includes('trace') || q.includes('contaminated') || q.includes('affected') || q.includes('recall') || q.includes('impact') || q.includes('lacak')) return 'TRACEABILITY';
+
+  return 'GENERAL';
+}
+
+// ============================================================
+// CONTEXT RETRIEVAL
+// ============================================================
+
+async function retrieveContext(intent: CopilotIntent, question: string, entity: ExtractedEntity): Promise<Record<string, unknown>> {
+  switch (intent) {
+    case 'SUPPLIER_RISK':
+      // Pass validated supplier name for specific lookup, or undefined for all
+      return {
+        supplier: await getSupplierContext(entity.validated ? entity.name! : undefined),
+        entity,
+      };
+
+    case 'QC_ANALYSIS':
+      return { qc: await getQCContext(entity.name || undefined), entity };
+
+    case 'INVENTORY_RISK':
+      return { inventory: await getInventoryContext(), entity };
+
+    case 'PRODUCTION_ANALYSIS':
+      return { production: await getProductionContext(), entity };
+
+    case 'TRACEABILITY': {
+      const qc = await getQCContext(entity.name || undefined);
+      return { qc, entity, lotNumber: entity.name };
+    }
+
+    case 'GENERAL':
+    default: {
+      const [supplier, qc, production] = await Promise.all([
+        getSupplierContext(),
+        getQCContext(entity.name || undefined),
+        getProductionContext(),
+      ]);
+      return { supplier, qc, production, entity };
+    }
+  }
+}
+
+// ============================================================
+// MAIN COPILOT SERVICE
+// ============================================================
+
+/**
+ * Entity-Aware AI Copilot.
+ * Flow: Question → Entity Extraction → Validation → Intent Detection → Context Retrieval → Analysis
+ *
+ * RULES:
+ * - Never generate risk assessment for entities that don't exist
+ * - Never fall back to generic summaries when a specific entity is referenced
+ * - Every claim must come from the database
  */
 export async function analyzeQuestion(question: string): Promise<AIAnalysisResult> {
-  // 1. Gather relevant manufacturing context
-  const context = await gatherContext(question);
+  // Step 1: Extract and validate entity
+  const entity = await extractEntity(question);
 
-  // 2. Get AI provider (mock or real LLM)
+  // Step 2: If entity referenced but NOT found — return clear "not found" response
+  if (entity.type !== 'NONE' && !entity.validated) {
+    return {
+      summary: `I could not find ${entity.type === 'SUPPLIER' ? 'a supplier' : 'a lot'} named "${entity.name}" in the manufacturing database.`,
+      confidence: 100,
+      riskLevel: 'LOW',
+      intent: entity.type === 'SUPPLIER' ? 'SUPPLIER_RISK' : 'QC_ANALYSIS',
+      evidence: [`No record found for "${entity.name}" in the system.`],
+      recommendations: [
+        'Verify the entity name is spelled correctly.',
+        'Check if the entity exists in the system.',
+        `Available suppliers can be viewed at GET /suppliers.`,
+      ],
+      relatedEntities: { suppliers: [], lots: [], productionBatches: [], inventory: [] },
+    };
+  }
+
+  // Step 3: Detect intent (entity-aware)
+  const intent = detectIntent(question, entity);
+
+  // Step 4: Retrieve relevant context from database
+  const data = await retrieveContext(intent, question, entity);
+
+  // Step 5: Build manufacturing context for provider
+  const context: ManufacturingContext = { intent, question, data };
+
+  // Step 6: Get AI provider and generate analysis
   const provider = getAIProvider();
-
-  // 3. Generate analysis
-  const result = await provider.analyze(context, question);
+  const result = await provider.analyze(context);
 
   return result;
 }

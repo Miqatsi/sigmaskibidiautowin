@@ -10,6 +10,9 @@ router.use(authenticate);
 // AI Copilot — all operational roles can ask questions
 router.post('/copilot', authorize('Admin', 'QC', 'Warehouse', 'Production', 'Manager'), controller.copilot);
 
+// Manufacturing Intelligence Report — management
+router.post('/report', authorize('Admin', 'Manager'), controller.report);
+
 // Manufacturing summary — dashboard widget
 router.get('/summary', authorize('Admin', 'Manager', 'QC'), controller.summary);
 

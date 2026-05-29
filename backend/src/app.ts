@@ -14,6 +14,7 @@ import inventoryRoutes from './modules/inventory/inventory.routes';
 import traceabilityRoutes from './modules/traceability/traceability.routes';
 import warehouseRoutes from './modules/warehouse/warehouse.routes';
 import aiRoutes from './modules/ai/ai.routes';
+import alertsRoutes from './modules/alerts/alerts.routes';
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use('/inventory', inventoryRoutes);
 app.use('/traceability', traceabilityRoutes);
 app.use('/warehouses', warehouseRoutes);
 app.use('/ai', aiRoutes);
+app.use('/alerts', alertsRoutes);
 
 // 404 handler
 app.use((_req, res) => {

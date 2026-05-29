@@ -15,16 +15,29 @@ interface AISummary {
   healthScore: number;
 }
 
+interface DashboardAlert {
+  id: string;
+  severity: string;
+  title: string;
+  type: string;
+  link?: string;
+}
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState<AISummary | null>(null);
+  const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadSummary(); }, []);
+  useEffect(() => { loadData(); }, []);
 
-  async function loadSummary() {
+  async function loadData() {
     try {
-      const res = await api.get<{ success: boolean; data: AISummary }>('/ai/summary');
-      if (res.success && res.data) setSummary(res.data);
+      const [summaryRes, alertsRes] = await Promise.allSettled([
+        api.get<{ success: boolean; data: AISummary }>('/ai/summary'),
+        api.get<{ success: boolean; data: { alerts: DashboardAlert[] } }>('/alerts'),
+      ]);
+      if (summaryRes.status === 'fulfilled' && summaryRes.value.success) setSummary(summaryRes.value.data);
+      if (alertsRes.status === 'fulfilled' && alertsRes.value.success) setAlerts(alertsRes.value.data.alerts.slice(0, 5));
     } catch {
       setSummary({ totalLots: 0, pendingQC: 0, failedQC: 0, activeOrders: 0, recentTransactions: 0, healthScore: 0 });
     } finally {
@@ -64,7 +77,14 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-          <div className="text-6xl opacity-30">🏭</div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-6xl opacity-30">🏭</div>
+            <Link href="/dashboard/reports">
+              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                📊 Generate Board Report
+              </button>
+            </Link>
+          </div>
         </div>
         <p className="text-sm text-gray-600 mt-2">
           {(summary?.healthScore || 0) >= 80 ? 'All systems operational' :
@@ -95,18 +115,17 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card title="⚠️ Alerts">
-          <div className="space-y-3">
-            {summary?.pendingQC ? (
-              <AlertItem level="warning" message={`${summary.pendingQC} lot(s) awaiting QC inspection`} />
-            ) : null}
-            {summary?.failedQC ? (
-              <AlertItem level="danger" message={`${summary.failedQC} QC failure(s) detected — investigate`} />
-            ) : null}
-            {!summary?.pendingQC && !summary?.failedQC && (
-              <div className="text-center py-6 text-gray-500">
-                <p className="text-lg">✅ No active alerts</p>
-                <p className="text-sm">All operations running smoothly</p>
+        <Card title="⚠️ Live Alerts" action={<Link href="/dashboard/alerts" className="text-sm text-blue-600 hover:underline">View All →</Link>}>
+          <div className="space-y-2">
+            {alerts.length > 0 ? alerts.map((alert) => (
+              <Link key={alert.id} href={alert.link || '/dashboard/alerts'} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                <span>{alert.severity === 'CRITICAL' ? '🔴' : alert.severity === 'HIGH' ? '🟠' : alert.severity === 'MEDIUM' ? '🟡' : '🟢'}</span>
+                <span className="text-sm text-gray-800 flex-1 truncate">{alert.title}</span>
+                <Badge variant={alert.severity === 'HIGH' || alert.severity === 'CRITICAL' ? 'danger' : alert.severity === 'MEDIUM' ? 'warning' : 'success'}>{alert.severity}</Badge>
+              </Link>
+            )) : (
+              <div className="text-center py-4 text-gray-500">
+                <p className="text-sm">✅ No active alerts</p>
               </div>
             )}
           </div>
