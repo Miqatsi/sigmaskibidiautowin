@@ -4,6 +4,90 @@ AI-powered manufacturing operations system for **CyberHack 2026**.
 
 ---
 
+## 🏗️ System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND                                        │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │              Next.js 16 (App Router + Tailwind 4)                    │   │
+│   │                      http://localhost:3001                           │   │
+│   │                                                                     │   │
+│   │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │   │
+│   │  │Dashboard │ │Visual QC │ │  PPIC    │ │Traceabi- │ │   Lot    │ │   │
+│   │  │ Overview │ │Inspector │ │Scheduler │ │  lity    │ │ Tracking │ │   │
+│   │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                          │              │              │                     │
+└──────────────────────────┼──────────────┼──────────────┼─────────────────────┘
+                           │              │              │
+                    REST API calls   Image Upload    Schedule Request
+                           │              │              │
+┌──────────────────────────┼──────────────┼──────────────┼─────────────────────┐
+│                    BACKEND SERVICES                                           │
+│                                                                              │
+│  ┌────────────────────────────────┐  ┌─────────────────┐  ┌──────────────┐  │
+│  │     Express API (Port 3000)    │  │  AI QC Vision   │  │ AI Scheduler │  │
+│  │                                │  │  (Port 8000)    │  │ (Port 8001)  │  │
+│  │  • JWT Auth + RBAC (5 roles)   │  │                 │  │              │  │
+│  │  • Zod Input Validation        │  │  • YOLOv8 GPU   │  │ • OR-Tools   │  │
+│  │  • Audit Trail (immutable)     │  │  • OpenCV HSV   │  │   CP-SAT     │  │
+│  │  • Rate Limiting + Helmet      │  │  • Powder QC    │  │ • Makespan   │  │
+│  │                                │  │  • Defect Det.  │  │   Minimize   │  │
+│  │  Modules:                      │  │                 │  │ • No-overlap │  │
+│  │  ├── /auth (login, profile)    │  │  FastAPI +      │  │   Constraint │  │
+│  │  ├── /lots (status machine)    │  │  PyTorch CUDA   │  │              │  │
+│  │  ├── /qc (auto-update lots)    │  └─────────────────┘  │  FastAPI +   │  │
+│  │  ├── /production (orders)      │                        │  Python      │  │
+│  │  ├── /inventory (ledger)       │  ┌─────────────────┐  └──────────────┘  │
+│  │  ├── /traceability (genealogy) │  │  AI Copilot     │                    │
+│  │  ├── /ai/copilot (NLP Q&A)    │  │  (Built-in)     │                    │
+│  │  └── /ai/schedule (OR-Tools)  │  │                 │                    │
+│  │                                │  │  • Intent Det.  │                    │
+│  │  Prisma 7 ORM                  │  │  • Context Agg. │                    │
+│  └────────────────┬───────────────┘  │  • Evidence     │                    │
+│                   │                   └─────────────────┘                    │
+└───────────────────┼──────────────────────────────────────────────────────────┘
+                    │
+              SQL Queries (Prisma Adapter-PG)
+                    │
+┌───────────────────┼──────────────────────────────────────────────────────────┐
+│              DATABASE LAYER                                                   │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │                    PostgreSQL (Port 5432)                               │  │
+│  │                                                                        │  │
+│  │  AUTH:        roles, permissions, users                                 │  │
+│  │  SUPPLY:      suppliers, raw_materials, raw_material_lots               │  │
+│  │  PRODUCTION:  products, production_orders, production_batches           │  │
+│  │  WAREHOUSE:   warehouses, storage_locations, inventory_transactions     │  │
+│  │  QC:          qc_logs, sample_dispatches                                │  │
+│  │  AUDIT:       audit_logs (immutable, append-only)                       │  │
+│  │                                                                        │  │
+│  │  16 tables │ Full indexes │ Soft-delete │ Optimistic locking            │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Flow:**
+```
+Raw Material → Receive Lot → QC Inspection (AI Vision) → Approve/Reject
+                                                              │
+                                    ┌─────────────────────────┘
+                                    ▼
+              PPIC Schedule (OR-Tools) → Production Order → Batch → Consume Lots
+                                                                        │
+                                                                        ▼
+                                              Inventory IN → Warehouse → Dispatch
+                                                                        │
+                                                                        ▼
+                                              Traceability: Full genealogy (any direction)
+```
+
+---
+
 ## 🚀 Quick Start (One Command)
 
 ```bash

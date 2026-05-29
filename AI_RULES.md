@@ -220,7 +220,7 @@ Sebelum finalize, check:
 **Architecture**
 - ✅ Design ERD: Products, Lots, QC Logs, Users, Audit Logs, Suppliers, Production, Inventory
 - ✅ Add audit fields: created_at, updated_at, updated_by, deleted_at, version
-- ❌ Design system architecture diagram
+- ✅ Design system architecture diagram
 
 **Setup**
 - ✅ Initialize Git repository
