@@ -2,15 +2,6 @@
 # AI/ML .gitignore — Sima Arome QC Vision
 # ============================================================
 
-# Dataset images (large files, train locally)
-datasets/
-*.jpg
-*.jpeg
-*.png
-*.webp
-*.bmp
-*.tiff
-
 # Training outputs (model weights are large)
 runs/
 *.pt

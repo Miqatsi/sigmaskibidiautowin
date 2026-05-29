@@ -62,10 +62,8 @@ yarn-error.log*
 *.tgz
 .cache/
 
-# AI/ML — Dataset images and model weights (train locally)
-ai/datasets/
+# AI/ML — Model weights only (dataset is shared via git)
 ai/runs/
-dataset/
 runs/
 *.pt
 *.onnx
