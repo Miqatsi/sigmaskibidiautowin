@@ -1,0 +1,12 @@
+train: train/images
+val: train/images
+
+nc: 10
+names: ['fresh_apple', 'fresh_banana', 'fresh_grape', 'fresh_mango', 'fresh_orange', 'rotten_apple', 'rotten_banana', 'rotten_grape', 'rotten_mango', 'rotten_orange']
+
+roboflow:
+  workspace: model-xv0dj
+  project: fruitvision-fresh-vs-rotten-9vv1t
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/model-xv0dj/fruitvision-fresh-vs-rotten-9vv1t/dataset/1
