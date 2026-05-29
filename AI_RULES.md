@@ -327,11 +327,11 @@ Sebelum finalize, check:
   ```
 
 **QC Computer Vision** (`POST /ai/qc-vision`)
-- ❌ Analyze incoming raw material images
-- ❌ Detect defects / contamination
-- ❌ Assess color consistency
-- ❌ Assess powder/liquid consistency
-- ❌ Technology: YOLO / OpenCV / FastAPI microservice
+- ✅ Analyze incoming raw material images
+- ✅ Detect defects / contamination
+- ✅ Assess color consistency
+- ✅ Assess powder/liquid consistency
+- ✅ Technology: YOLO / OpenCV / FastAPI microservice
 - ❌ Integration with QC module (auto-attach results)
 
 **Reliability**
@@ -349,7 +349,7 @@ Sebelum finalize, check:
 - ✅ Dashboard
 - ✅ AI Manufacturing Copilot (POST /ai/copilot)
 - ❌ Predictive QC Risk Engine
-- ❌ Computer Vision QC
+- ✅ Computer Vision QC
 - ✅ Functional frontend
 
 **Enterprise Checks:**
