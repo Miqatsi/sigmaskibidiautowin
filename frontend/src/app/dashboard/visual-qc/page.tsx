@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -88,8 +88,45 @@ export default function VisualQCInspectorPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Lot/Batch selection
+  const [lots, setLots] = useState<Array<{ id: string; lotNumber: string; status: string }>>([]);
+  const [batches, setBatches] = useState<Array<{ id: string; lotNumber: string; status: string }>>([]);
+  const [selectedLotId, setSelectedLotId] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  // ── Load lots and batches on mount ──
+
+  useEffect(() => {
+    loadLotsAndBatches();
+  }, []);
+
+  async function loadLotsAndBatches() {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      const [lotsRes, batchesRes] = await Promise.allSettled([
+        fetch('http://localhost:3000/lots?limit=100&status=PENDING_QC', { headers }).then(r => r.json()),
+        fetch('http://localhost:3000/production/batches?limit=100', { headers }).then(r => r.json()),
+      ]);
+
+      if (lotsRes.status === 'fulfilled' && lotsRes.value.success) {
+        setLots(lotsRes.value.data.map((l: { id: string; lotNumber: string; status: string }) => ({
+          id: l.id, lotNumber: l.lotNumber, status: l.status,
+        })));
+      }
+      if (batchesRes.status === 'fulfilled' && batchesRes.value.success) {
+        setBatches(batchesRes.value.data.map((b: { id: string; lotNumber: string; status: string }) => ({
+          id: b.id, lotNumber: b.lotNumber, status: b.status,
+        })));
+      }
+    } catch {
+      // Non-critical — lots/batches just won't be available for selection
+    }
+  }
 
   // ── File handling ──
 
@@ -157,9 +194,19 @@ export default function VisualQCInspectorPage() {
   }
 
   async function saveToLotLog() {
+    // Validate lot/batch selection
+    if (mode === 'raw_material' && !selectedLotId) {
+      setError('Pilih Lot terlebih dahulu sebelum menyimpan.');
+      return;
+    }
+    if (mode === 'powder' && !selectedBatchId) {
+      setError('Pilih Batch terlebih dahulu sebelum menyimpan.');
+      return;
+    }
+
     setSaving(true);
+    setError('');
     try {
-      // Determine result and notes
       let result = 'PASS';
       let notes = '';
 
@@ -173,23 +220,34 @@ export default function VisualQCInspectorPage() {
       }
 
       const token = localStorage.getItem('token');
+      const body: Record<string, string> = {
+        type: mode === 'raw_material' ? 'INCOMING' : 'IN_PROCESS',
+        result,
+        notes,
+      };
+
+      // Attach lot or batch ID
+      if (mode === 'raw_material' && selectedLotId) {
+        body.rawMaterialLotId = selectedLotId;
+      }
+      if (mode === 'powder' && selectedBatchId) {
+        body.batchId = selectedBatchId;
+      }
+
       const response = await fetch('http://localhost:3000/qc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          type: mode === 'raw_material' ? 'INCOMING' : 'IN_PROCESS',
-          result,
-          notes,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
         setSaved(true);
       } else {
-        setError('Gagal menyimpan ke QC log. Coba lagi.');
+        const data = await response.json().catch(() => null);
+        setError(data?.message || 'Gagal menyimpan ke QC log. Coba lagi.');
       }
     } catch {
       setError('Gagal terhubung ke backend.');
@@ -530,6 +588,57 @@ export default function VisualQCInspectorPage() {
             </Card>
           )}
 
+          {/* Lot/Batch Selector */}
+          {hasResult && !saved && (
+            <Card title={mode === 'raw_material' ? 'Pilih Lot' : 'Pilih Batch'}>
+              {mode === 'raw_material' ? (
+                <div>
+                  <label htmlFor="lot-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Raw Material Lot (PENDING_QC):
+                  </label>
+                  <select
+                    id="lot-select"
+                    value={selectedLotId}
+                    onChange={(e) => setSelectedLotId(e.target.value)}
+                    className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Pilih Lot --</option>
+                    {lots.map((lot) => (
+                      <option key={lot.id} value={lot.id}>
+                        {lot.lotNumber} ({lot.status})
+                      </option>
+                    ))}
+                  </select>
+                  {lots.length === 0 && (
+                    <p className="text-sm text-gray-500 mt-2">Tidak ada lot PENDING_QC.</p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label htmlFor="batch-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Production Batch:
+                  </label>
+                  <select
+                    id="batch-select"
+                    value={selectedBatchId}
+                    onChange={(e) => setSelectedBatchId(e.target.value)}
+                    className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">-- Pilih Batch --</option>
+                    {batches.map((batch) => (
+                      <option key={batch.id} value={batch.id}>
+                        {batch.lotNumber} ({batch.status})
+                      </option>
+                    ))}
+                  </select>
+                  {batches.length === 0 && (
+                    <p className="text-sm text-gray-500 mt-2">Tidak ada batch tersedia.</p>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
+
           {/* Save button */}
           {hasResult && (
             <div className="space-y-2">
@@ -544,7 +653,7 @@ export default function VisualQCInspectorPage() {
                   variant={overallStatus === 'PASS' ? 'primary' : 'danger'}
                   onClick={saveToLotLog}
                   loading={saving}
-                  disabled={saving}
+                  disabled={saving || (mode === 'raw_material' && !selectedLotId) || (mode === 'powder' && !selectedBatchId)}
                 >
                   💾 Simpan Inspeksi ke Lot Log
                 </Button>
