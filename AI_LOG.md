@@ -813,3 +813,54 @@ Sample output:
 ---
 
 *Last updated: 2026-05-29 (PPIC OR-Tools scheduling complete + comprehensive seed)*
+
+---
+
+## Session: 2026-05-29 — Visual QC Inspector UI + README + Docs Update
+
+### AI Self-Review Protocol
+
+```
+Date: 2026-05-29
+Task: Frontend Visual QC Inspector + README + docs update
+Files Changed:
+  - frontend/src/app/dashboard/visual-qc/page.tsx (NEW — full Visual QC Inspector UI)
+  - frontend/src/components/layout/Sidebar.tsx (added Visual QC nav item)
+  - README.md (complete project README with quickstart guide)
+  - AI_RULES.md (QC Vision integration → ✅)
+  - AI_LOG.md (this entry)
+Completed:
+  - Visual QC Inspector page (/dashboard/visual-qc):
+    - Mode toggle: Raw Material Intake vs Extract Powder Analysis
+    - Drag-and-drop image upload with preview
+    - SVG bounding box overlay on detected objects
+    - Real-time API calls to AI service (port 8000)
+    - Results panel: detections, confidence, colour gauge, contamination status
+    - Large PASS/FAIL status badge (factory-friendly)
+    - "Save to QC Log" button (writes to backend POST /qc)
+    - Bahasa Indonesia UI labels
+  - README.md with full quickstart guide (4 services setup)
+  - All AI features now have frontend integration
+Remaining:
+  - Deployment (Vercel + Railway)
+  - Demo video
+  - Pitch deck
+Risks:
+  - AI service must be running for Visual QC to work
+  - CORS configured for localhost only
+Technical Debt:
+  - Bounding box overlay uses natural image dimensions (works correctly)
+  - No image compression before upload
+Bugs:
+  - None known
+Security Concerns:
+  - None
+Next Priority:
+  - Deployment
+  - Demo video recording
+  - Pitch deck
+```
+
+---
+
+*Last updated: 2026-05-29 (Visual QC Inspector UI complete — all AI features integrated)*

@@ -1,223 +1,156 @@
-# 🏭 Sima Arome — Enterprise Manufacturing Platform
+# 🏭 Sima Arome — Enterprise Manufacturing Intelligence Platform
 
-AI-powered manufacturing operations platform with full lot traceability, QC management, production tracking, and inventory ledger.
+AI-powered manufacturing operations system for Sima Arome, an Indonesian natural extracts manufacturer. Built for **CyberHack 2026**.
 
----
+## Features
 
-## Quick Start
-
-### Prerequisites
-
-- **Node.js** v18+
-- **PostgreSQL** v15+ (local install or Docker)
-- **npm** (comes with Node.js)
-
-### 1. Clone & Install
-
-```bash
-git clone https://github.com/Miqatsi/sigmaskibidiautowin.git
-cd sigmaskibidiautowin
-
-# Install backend
-cd backend
-npm install
-
-# Install frontend
-cd ../frontend
-npm install
-```
-
-### 2. Setup Database
-
-Make sure PostgreSQL is running, then:
-
-```bash
-cd backend
-
-# Create database (via psql)
-psql -U postgres -h localhost -c "CREATE DATABASE sima_arome;"
-
-# Copy environment file
-# Edit .env and set your PostgreSQL password
-```
-
-Create `backend/.env`:
-```env
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/sima_arome?schema=public&sslmode=disable"
-JWT_SECRET="your-secret-key-change-in-production"
-JWT_EXPIRES_IN="8h"
-PORT=3000
-NODE_ENV=development
-```
-
-### 3. Run Migrations & Seed
-
-```bash
-cd backend
-npx prisma migrate dev
-npx prisma db seed
-```
-
-### 4. Start Servers
-
-**Terminal 1 — Backend (port 3000):**
-```bash
-cd backend
-npx ts-node --transpile-only src/server.ts
-```
-
-**Terminal 2 — Frontend (port 3001):**
-```bash
-cd frontend
-npm run dev
-```
-
-### 5. Open in Browser
-
-- **Frontend:** http://localhost:3001
-- **Backend API:** http://localhost:3000/health
-- **Prisma Studio:** `npx prisma studio` (from backend folder)
-
----
-
-## Login Credentials
-
-| Username | Password | Role |
-|----------|----------|------|
-| admin | password123 | Admin (full access) |
-| qc001 | password123 | QC Inspector |
-| wh001 | password123 | Warehouse |
-| prod001 | password123 | Production |
-
-Demo mode (offline): `sigma` / `skibidi`
-
----
-
-## API Endpoints (25+)
-
-| Module | Endpoints |
-|--------|-----------|
-| Auth | `POST /auth/login`, `GET /auth/profile` |
-| Suppliers | CRUD `/suppliers` |
-| Materials | CRUD `/materials` |
-| Lots | CRUD `/lots`, `PATCH /lots/:id/status` |
-| QC | CRUD `/qc` (auto-updates lot status) |
-| Production | `/production/orders`, `/production/batches` |
-| Inventory | `/inventory/transactions`, `/inventory/balance/:id` |
-| Traceability | `GET /traceability/:lotNumber` |
-| AI Copilot | `POST /ai/copilot`, `GET /ai/summary` |
-| Warehouses | `GET /warehouses/locations`, `GET /warehouses/products` |
-
-All endpoints (except login) require `Authorization: Bearer <token>` header.
-
----
-
-## AI Manufacturing Copilot
-
-Ask natural language questions about your manufacturing data:
-
-```bash
-POST /ai/copilot
-{
-  "question": "Why did lot RM-001 fail QC?"
-}
-```
-
-**Example questions:**
-- "Why did lot RM-001 fail QC?" → Root cause analysis
-- "What is affected if RM-001 is contaminated?" → Impact/recall analysis
-- "Which supplier has the highest failure rate?" → Supplier risk
-- "Trace lot FG-001" → Traceability guidance
-
----
-
-## Key Features
-
-- ✅ **Full Lot Traceability** — Forward & backward trace (Supplier → Lot → QC → Production → Inventory)
-- ✅ **AI Copilot** — Manufacturing insights, risk analysis, recommendations
-- ✅ **QC Auto-Approval** — QC PASS auto-updates lot to APPROVED
-- ✅ **Status State Machine** — Enforced transitions (PENDING_QC → APPROVED → CONSUMED)
-- ✅ **RBAC** — 5 roles with granular access control
-- ✅ **Audit Trail** — Every operation logged (WHO, WHAT, WHEN, OLD, NEW)
-- ✅ **Enterprise Security** — Helmet, CORS, rate limiting, Zod validation, bcrypt
-
----
+- **Integrated Operations** — Unified platform: suppliers, warehouse, QC, PPIC, production, inventory, dispatch
+- **AI Visual QC** — YOLOv8 defect detection + OpenCV colour/powder analysis (GPU-accelerated)
+- **PPIC Scheduling** — Google OR-Tools CP-SAT solver for optimal production scheduling
+- **Full Traceability** — Forward/backward lot genealogy (raw material → finished good → customer)
+- **AI Manufacturing Copilot** — Natural language Q&A about operations
+- **Enterprise Security** — JWT + RBAC + audit trails + Zod validation
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 16 + React 19 + Tailwind CSS 4 |
-| Backend | Express + TypeScript (strict) |
-| Database | PostgreSQL 18 + Prisma 7 |
-| Auth | JWT + bcrypt + RBAC |
-| Validation | Zod |
-| Logging | Pino |
-| Security | Helmet + CORS + Rate Limiting |
+| Frontend | Next.js 16 (App Router) + Tailwind CSS 4 + TypeScript |
+| Backend | Node.js + Express 5 + TypeScript + Prisma 7 |
+| Database | PostgreSQL |
+| AI Vision | YOLOv8 (Ultralytics) + OpenCV + FastAPI + PyTorch + CUDA |
+| AI Scheduling | Google OR-Tools CP-SAT Solver + FastAPI |
+| Auth | JWT + bcrypt + RBAC (5 roles) |
 
----
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL 15+
+- Python 3.10+ with NVIDIA GPU (CUDA) for AI features
+- npm
+
+### 1. Backend
+
+```bash
+cd backend
+npm install
+cp .env.example .env  # Edit DATABASE_URL, JWT_SECRET
+
+# Database setup
+npx prisma generate
+npx prisma migrate deploy
+npx ts-node --transpile-only prisma/seed.ts
+
+# Start server (port 3000)
+npx ts-node --transpile-only src/server.ts
+```
+
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
+
+# Start dev server (port 3001)
+npm run dev
+```
+
+### 3. AI Services (requires NVIDIA GPU)
+
+```bash
+cd ai
+
+# Install Python dependencies (in ultralytics venv or system)
+pip install -r requirements.txt
+pip install ortools
+
+# Train YOLO model (first time only — needs dataset)
+# Download dataset from Roboflow into ../dataset/sima_qc_data/
+python train.py
+
+# Start AI QC Vision service (port 8000)
+python main.py
+
+# Start OR-Tools Scheduling service (port 8001)
+python scheduler.py
+```
+
+### 4. Login
+
+Open `http://localhost:3001` and login:
+- **Username:** `sigma`
+- **Password:** `skibidi`
+
+## Services Overview
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Frontend | 3001 | Next.js dashboard |
+| Backend API | 3000 | Express REST API |
+| AI QC Vision | 8000 | YOLO + OpenCV (FastAPI) |
+| AI Scheduler | 8001 | OR-Tools CP-SAT (FastAPI) |
+| PostgreSQL | 5432 | Database |
+
+## API Endpoints
+
+### Backend (port 3000)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /auth/login | JWT authentication |
+| GET | /lots | Raw material lots |
+| POST | /qc | QC inspections |
+| GET | /production/orders | Production orders |
+| GET | /inventory | Inventory transactions |
+| GET | /traceability/:lotNumber | Full lot genealogy |
+| POST | /ai/schedule | AI production scheduling |
+| POST | /ai/copilot | AI manufacturing Q&A |
+
+### AI Vision (port 8000)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /predict | YOLO defect detection |
+| POST | /analyze-color | Colour consistency analysis |
+| POST | /analyze-powder | Powder QC (colour + contamination) |
+| POST | /full-inspect | Combined YOLO + colour |
+
+### AI Scheduler (port 8001)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /optimize-schedule | OR-Tools CP-SAT scheduling |
+
+## Demo Credentials
+
+| Username | Password | Role |
+|----------|----------|------|
+| sigma | skibidi | Admin |
+| admin | password123 | Admin |
+| qc001 | password123 | QC |
+| wh001 | password123 | Warehouse |
+| prod001 | password123 | Production |
+| manager | password123 | Manager |
 
 ## Project Structure
 
 ```
-├── backend/
-│   ├── prisma/           # Schema, migrations, seed
-│   ├── src/
-│   │   ├── app.ts        # Express app setup
-│   │   ├── server.ts     # Entry point
-│   │   ├── lib/          # Prisma client, logger
-│   │   ├── middleware/    # Auth, RBAC, audit, logging
-│   │   └── modules/      # auth, supplier, material, lot, qc,
-│   │                      # production, inventory, traceability,
-│   │                      # warehouse, ai
-│   └── bruno/            # API test collection
-├── frontend/
-│   └── src/
-│       ├── app/          # Next.js pages
-│       ├── components/   # UI components
-│       ├── lib/          # API client, auth utils
-│       └── types/        # TypeScript definitions
-├── docker-compose.yml    # PostgreSQL container
-├── AI_LOG.md             # Development progress log
-└── AI_RULES.md           # Coding standards & checklist
+├── backend/          # Express + Prisma + TypeScript
+├── frontend/         # Next.js 16 + Tailwind 4
+├── ai/               # Python AI services
+│   ├── main.py       # QC Vision API (port 8000)
+│   ├── scheduler.py  # OR-Tools Scheduler (port 8001)
+│   ├── train.py      # YOLO training script
+│   └── evaluate.py   # Model metrics
+├── dataset/          # Training data (gitignored)
+├── PRD.md            # Product Requirements Document
+├── AI_LOG.md         # Development log
+└── AI_RULES.md       # AI coding standards
 ```
-
----
-
-## Testing with Bruno
-
-1. Install [Bruno](https://www.usebruno.com/) (free, open source)
-2. Open Collection → select `backend/bruno` folder
-3. Select environment: **Development**
-4. **Make sure backend server is running first!**
-5. Run collection (requests execute in order: login → data → AI)
-
----
-
-## Deployment
-
-### Frontend (Vercel)
-```bash
-cd frontend
-npx vercel
-```
-
-### Backend (Railway / Render)
-- Set environment variables (DATABASE_URL, JWT_SECRET, PORT)
-- Deploy from GitHub repo
-- Point to PostgreSQL instance
-
-### Database (Neon / Supabase)
-- Create free PostgreSQL instance
-- Update DATABASE_URL in backend .env
-- Run `npx prisma migrate deploy`
-
----
 
 ## Team
 
-Built for CyberHack Hackathon 2026.
+**sigmaskibidiautowin** — CyberHack 2026, ITS Surabaya
 
----
+## License
 
-*For AI assistants: Read `AI_LOG.md` and `AI_RULES.md` before making changes.*
+MIT

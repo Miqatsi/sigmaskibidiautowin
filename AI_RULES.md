@@ -332,7 +332,7 @@ Sebelum finalize, check:
 - ✅ Assess color consistency (OpenCV HSV analysis)
 - ✅ Assess powder/liquid consistency (POST /analyze-powder — HSV variance + spatial uniformity + outlier detection)
 - ✅ Technology: YOLO + OpenCV / FastAPI microservice
-- ❌ Integration with QC module (auto-attach results)
+- ✅ Integration with QC module (Visual QC Inspector UI + save to QC log)
 
 **Reliability**
 - ✅ Timeout handling (rate limiting)
