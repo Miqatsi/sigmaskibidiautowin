@@ -13,6 +13,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -32,10 +33,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="ml-64">
-        <Header />
-        <main className="p-6">{children}</main>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="lg:ml-64 transition-[margin] duration-200">
+        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="p-3 sm:p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

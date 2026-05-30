@@ -56,49 +56,83 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-gray-900 text-white flex flex-col z-40">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-800">
-        <h1 className="text-xl font-bold tracking-tight">🏭 Sima Arome</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Manufacturing Intelligence Platform</p>
-      </div>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && onClose && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
-        {navSections.map((section) => (
-          <div key={section.title || 'main'}>
-            {section.title && (
-              <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{section.title}</p>
-            )}
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                      isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }`}
-                  >
-                    {item.icon}
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
+      {/* Sidebar */}
+      <aside
+        className={`fixed left-0 top-0 h-full w-64 bg-gray-900 text-white flex flex-col z-40 transition-transform duration-200 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
+        {/* Logo */}
+        <div className="px-6 py-5 border-b border-gray-800 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">🏭 Sima Arome</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Manufacturing Intelligence Platform</p>
           </div>
-        ))}
-      </nav>
+          {/* Close button on mobile */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
 
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-800 text-xs text-gray-500">
-        v1.0.0 — Enterprise Manufacturing Intelligence
-      </div>
-    </aside>
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {navSections.map((section) => (
+            <div key={section.title || 'main'}>
+              {section.title && (
+                <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{section.title}</p>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                        isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-gray-800 text-xs text-gray-500">
+          v1.0.0 — Enterprise Manufacturing Intelligence
+        </div>
+      </aside>
+    </>
   );
 }
