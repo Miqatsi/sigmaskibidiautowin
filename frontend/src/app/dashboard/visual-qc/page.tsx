@@ -70,7 +70,7 @@ type InspectionMode = 'raw_material' | 'powder';
 // CONSTANTS
 // ============================================================
 
-const AI_SERVICE_URL = 'http://localhost:8000';
+const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
 
 // ============================================================
 // MAIN COMPONENT
