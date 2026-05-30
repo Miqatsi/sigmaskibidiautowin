@@ -14,7 +14,7 @@ export const CreateLotSchema = z.object({
 
 export const UpdateLotStatusSchema = z.object({
   status: z.enum(LotStatus, {
-    errorMap: () => ({ message: `Status harus salah satu dari: ${LotStatus.join(', ')}` }),
+    error: `Status harus salah satu dari: ${LotStatus.join(', ')}`,
   }),
 });
 

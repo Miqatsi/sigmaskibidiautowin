@@ -64,7 +64,7 @@ export async function loginUser(payload: LoginPayload): Promise<AuthResult> {
   };
 
   const token = jwt.sign(tokenPayload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
+    expiresIn: JWT_EXPIRES_IN as any,
   });
 
   return {

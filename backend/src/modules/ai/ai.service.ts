@@ -227,6 +227,7 @@ export async function analyzeQuestion(question: string): Promise<AIAnalysisResul
       confidence: 100,
       riskLevel: 'LOW',
       intent: entity.type === 'SUPPLIER' ? 'SUPPLIER_RISK' : 'QC_ANALYSIS',
+      dataQuality: { confidence: 'HIGH', sampleSize: 0, dataQuality: 'LIMITED', note: 'Entity not found in database.' },
       evidence: [`No record found for "${entity.name}" in the system.`],
       recommendations: [
         'Verify the entity name is spelled correctly.',
@@ -252,9 +253,9 @@ export async function analyzeQuestion(question: string): Promise<AIAnalysisResul
 
   // Step 7: Ensure dataQuality is always present
   if (!result.dataQuality) {
-    const sampleSize = Object.values(data).reduce((sum: number, v) => {
+    const sampleSize: number = Object.values(data).reduce<number>((sum, v) => {
       if (Array.isArray(v)) return sum + v.length;
-      if (v && typeof v === 'object' && 'totalInspections' in (v as Record<string, unknown>)) return sum + ((v as Record<string, unknown>).totalInspections as number || 0);
+      if (v && typeof v === 'object' && 'totalInspections' in (v as Record<string, unknown>)) return sum + (Number((v as Record<string, unknown>).totalInspections) || 0);
       return sum;
     }, 0);
     result.dataQuality = assessDataQuality(sampleSize || 1);

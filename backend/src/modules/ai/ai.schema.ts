@@ -70,7 +70,7 @@ export interface AIAnalysisResult {
   intent: CopilotIntent;
 
   // Data Quality
-  dataQuality: DataQuality;
+  dataQuality?: DataQuality;
 
   // Evidence & Explainability
   evidence: string[];

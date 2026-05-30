@@ -12,7 +12,7 @@ export const CreateOrderSchema = z.object({
 });
 
 export const UpdateOrderStatusSchema = z.object({
-  status: z.enum(OrderStatus, { errorMap: () => ({ message: `Status harus: ${OrderStatus.join(', ')}` }) }),
+  status: z.enum(OrderStatus, { error: `Status harus: ${OrderStatus.join(', ')}` }),
 });
 
 export const CreateBatchSchema = z.object({
@@ -28,7 +28,7 @@ export const CreateBatchSchema = z.object({
 });
 
 export const UpdateBatchStatusSchema = z.object({
-  status: z.enum(BatchStatus, { errorMap: () => ({ message: `Status harus: ${BatchStatus.join(', ')}` }) }),
+  status: z.enum(BatchStatus, { error: `Status harus: ${BatchStatus.join(', ')}` }),
 });
 
 export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
