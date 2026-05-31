@@ -172,7 +172,11 @@ export default function VisualQCInspectorPage() {
         ? `${AI_SERVICE_URL}/predict`
         : `${AI_SERVICE_URL}/analyze-powder`;
 
-      const response = await fetch(endpoint, { method: 'POST', body: formData });
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+        headers: { 'ngrok-skip-browser-warning': 'true' },
+      });
 
       if (!response.ok) {
         const err = await response.json().catch(() => null);
